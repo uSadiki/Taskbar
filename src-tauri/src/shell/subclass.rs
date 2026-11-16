@@ -9,10 +9,10 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     MA_NOACTIVATE, WA_INACTIVE, WM_ACTIVATE, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ENDSESSION,
-    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_WINDOWPOSCHANGED,
+    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_TIMER, WM_WINDOWPOSCHANGED,
 };
 
-use super::{appbar, dock, guard, restore_message, taskbar_created_message};
+use super::{appbar, dock, guard, quit_message, restore_message, taskbar_created_message};
 
 const SUBCLASS_ID: usize = 0x474C_4153; // "GLAS"
 
@@ -21,6 +21,7 @@ pub fn install(hwnd: HWND) -> bool {
     // Register the shell messages up front so the proc only compares numbers.
     let _ = taskbar_created_message();
     let _ = restore_message();
+    let _ = quit_message();
     unsafe { SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0) }.as_bool()
 }
 
@@ -48,7 +49,7 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
             // The taskbar or another appbar moved: the strip may need to move.
             ABN_POSCHANGED => dock::request_reposition(),
             // A fullscreen app opened, or the last one closed.
-            ABN_FULLSCREENAPP => dock::evaluate_fullscreen(),
+            ABN_FULLSCREENAPP => dock::evaluate_fullscreen(None),
             ABN_STATECHANGE => log::debug!("appbar: taskbar state changed"),
             _ => {}
         }
@@ -66,6 +67,12 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
         dock::suspend_taskbar();
         return Some(LRESULT(0));
     }
+    if msg == quit_message() {
+        if let Some(rt) = dock::runtime() {
+            crate::app::quit(&rt.app);
+        }
+        return Some(LRESULT(0));
+    }
 
     match msg {
         WM_ACTIVATE => {
@@ -78,6 +85,10 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
         WM_WINDOWPOSCHANGED => {
             appbar::window_pos_changed(hwnd);
             None
+        }
+        WM_TIMER if wparam.0 == dock::FULLSCREEN_RETRY_TIMER => {
+            dock::on_fullscreen_retry();
+            Some(LRESULT(0))
         }
         // Resolution, monitor set or scaling changed. Tauri handles the
         // message first (it resizes for the new DPI); the posted reposition

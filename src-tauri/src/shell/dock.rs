@@ -18,9 +18,10 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumChildWindows, GWL_EXSTYLE, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
-    HWND_TOPMOST, IsWindow, PostMessageW, SW_HIDE, SW_SHOWNOACTIVATE, SWP_FRAMECHANGED,
-    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow, SetWindowLongPtrW,
-    SetWindowPos, ShowWindow, WM_APP, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    HWND_TOPMOST, IsWindow, KillTimer, PostMessageW, SW_HIDE, SW_SHOWNOACTIVATE, SWP_FRAMECHANGED,
+    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow, SetTimer,
+    SetWindowLongPtrW, SetWindowPos, ShowWindow, WM_APP, WS_EX_APPWINDOW, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW,
 };
 use windows::core::BOOL;
 
@@ -112,6 +113,10 @@ pub struct AppInfo {
     pub log_dir: String,
     pub settings_path: String,
 }
+
+/// Timer id for re-checking fullscreen state after an inconclusive check.
+pub const FULLSCREEN_RETRY_TIMER: usize = 0x4653;
+static FULLSCREEN_RETRIES: AtomicU32 = AtomicU32::new(0);
 
 static RUNTIME: OnceLock<DockRuntime> = OnceLock::new();
 static REPOSITION_PENDING: AtomicBool = AtomicBool::new(false);
@@ -490,7 +495,7 @@ fn emit_app_info() {
 /// Hide the dock while a fullscreen app is in the foreground on its monitor,
 /// and bring it back afterwards. Called on `ABN_FULLSCREENAPP` and on every
 /// foreground change.
-pub fn evaluate_fullscreen() {
+pub fn evaluate_fullscreen(candidate: Option<HWND>) {
     let Some(rt) = runtime() else { return };
     if rt.safe {
         return;
@@ -504,10 +509,19 @@ pub fn evaluate_fullscreen() {
     else {
         return;
     };
-    let Some(fullscreen) = fullscreen::foreground_is_fullscreen(rt.hwnd(), monitor_rect, primary)
+    let Some(fullscreen) =
+        fullscreen::foreground_is_fullscreen(rt.hwnd(), candidate, monitor_rect, primary)
     else {
+        // No foreground window at this instant. Ask again shortly; a few
+        // attempts are enough to get past a window switch.
+        if FULLSCREEN_RETRIES.fetch_add(1, Ordering::SeqCst) < 5 {
+            unsafe {
+                SetTimer(Some(rt.hwnd()), FULLSCREEN_RETRY_TIMER, 250, None);
+            }
+        }
         return;
     };
+    FULLSCREEN_RETRIES.store(0, Ordering::SeqCst);
 
     let changed = {
         let mut state = rt.state.lock();
@@ -534,7 +548,17 @@ pub fn on_foreground_changed(foreground: HWND) {
         log::debug!("dock: the dock window became the foreground window");
         return;
     }
-    evaluate_fullscreen();
+    evaluate_fullscreen(Some(foreground));
+}
+
+/// The retry timer set by `evaluate_fullscreen` fired.
+pub fn on_fullscreen_retry() {
+    if let Some(rt) = runtime() {
+        unsafe {
+            let _ = KillTimer(Some(rt.hwnd()), FULLSCREEN_RETRY_TIMER);
+        }
+    }
+    evaluate_fullscreen(None);
 }
 
 // ---------------------------------------------------------------------------

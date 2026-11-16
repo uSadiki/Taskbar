@@ -39,6 +39,22 @@ pub fn restore_message() -> u32 {
     *MESSAGE.get_or_init(|| unsafe { RegisterWindowMessageW(w!("Glassdock.RestoreTaskbar")) })
 }
 
+/// Sent by `glassdock.exe --quit` to a running dock, telling it to exit the
+/// same way the menu's Quit does. The installer uses this before it replaces
+/// or removes files.
+pub fn quit_message() -> u32 {
+    static MESSAGE: OnceLock<u32> = OnceLock::new();
+    *MESSAGE.get_or_init(|| unsafe { RegisterWindowMessageW(w!("Glassdock.Quit")) })
+}
+
+/// `glassdock.exe --quit`: ask a running dock to exit cleanly.
+pub fn quit_command() {
+    unsafe {
+        let _ = PostMessageW(Some(HWND_BROADCAST), quit_message(), WPARAM(0), LPARAM(0));
+    }
+    filelog::line("quit", "--quit sent to any running dock");
+}
+
 /// `glassdock.exe --restore`: the kill switch. Works whether or not a dock is
 /// running, and whether or not a journal exists.
 pub fn restore_command() {

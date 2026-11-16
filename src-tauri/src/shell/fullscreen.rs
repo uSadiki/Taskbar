@@ -38,13 +38,21 @@ pub fn covers_monitor(window: Rect, monitor: Rect) -> bool {
 
 /// `Some(true)` if the foreground window is a fullscreen app on `monitor`,
 /// `Some(false)` if it clearly is not, `None` when there is no foreground
-/// window right now (mid-switch), in which case the caller keeps its state.
+/// window right now (mid-switch), in which case the caller keeps its state
+/// and asks again shortly.
+///
+/// `candidate` is the window a foreground-change event named. It is preferred
+/// over `GetForegroundWindow`, which can briefly return null while the switch
+/// is still in progress.
 pub fn foreground_is_fullscreen(
     own: HWND,
+    candidate: Option<HWND>,
     monitor: Rect,
     monitor_is_primary: bool,
 ) -> Option<bool> {
-    let foreground = unsafe { GetForegroundWindow() };
+    let foreground = candidate
+        .filter(|hwnd| !hwnd.is_invalid())
+        .unwrap_or_else(|| unsafe { GetForegroundWindow() });
     if foreground.is_invalid() {
         return None;
     }
