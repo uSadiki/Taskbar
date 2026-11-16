@@ -21,6 +21,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 log = "0.4"
+notify = "8"
 parking_lot = "0.12"
 
 # Same major/minor as the copy Tauri, tao and wry use, so HWND and friends are one type.
@@ -30,7 +31,9 @@ features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
+  "Win32_Graphics_Imaging",
   "Win32_Security",
+  "Win32_System_Com",
   "Win32_System_Diagnostics_Debug",
   "Win32_System_Kernel",
   "Win32_System_Threading",

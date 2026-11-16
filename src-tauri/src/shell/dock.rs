@@ -102,6 +102,21 @@ pub struct DockLayout {
     pub scale: f64,
     pub monitor_id: String,
     pub safe_mode: bool,
+    /// The window's top-left corner relative to the monitor's, in physical
+    /// pixels. The glass uses it to find the wallpaper pixels behind it.
+    pub origin_x: i32,
+    pub origin_y: i32,
+    /// Monitor size in physical pixels.
+    pub monitor_width: i32,
+    pub monitor_height: i32,
+}
+
+/// Sent while the dock is being dragged, so the glass can follow.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowOrigin {
+    pub origin_x: i32,
+    pub origin_y: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -294,7 +309,12 @@ pub fn reposition() {
     let result = reposition_inner(rt);
     REPOSITIONING.store(false, Ordering::SeqCst);
     match result {
-        Ok(()) => emit_layout(),
+        Ok(()) => {
+            emit_layout();
+            // The dock may be on a different monitor now, or the monitor may
+            // have changed size. Cheap when nothing changed.
+            crate::glass::request_refresh(&rt.app);
+        }
         Err(e) => log::error!("dock: reposition failed: {e}"),
     }
 }
@@ -458,9 +478,20 @@ pub fn layout() -> Option<DockLayout> {
         window_width: f64::from(placement.window.width()) / placement.scale,
         window_height: f64::from(placement.window.height()) / placement.scale,
         scale: placement.scale,
-        monitor_id: placement.monitor.id,
         safe_mode: rt.safe,
+        origin_x: placement.window.left - placement.monitor.rect.left,
+        origin_y: placement.window.top - placement.monitor.rect.top,
+        monitor_width: placement.monitor.rect.width(),
+        monitor_height: placement.monitor.rect.height(),
+        monitor_id: placement.monitor.id,
     })
+}
+
+/// The rectangle of the monitor the dock is on, once it has been placed.
+pub fn monitor_rect() -> Option<Rect> {
+    let rt = runtime()?;
+    let state = rt.state.lock();
+    state.placement.as_ref().map(|p| p.monitor.rect)
 }
 
 pub fn emit_layout() {
@@ -591,11 +622,12 @@ pub fn drag_move() {
             (Some(drag), Some(placement)) => Some((
                 placement.window.left,
                 drag.window_top + (cursor - drag.cursor_y),
+                placement.monitor.rect,
             )),
             _ => None,
         }
     };
-    if let Some((left, top)) = target {
+    if let Some((left, top, monitor)) = target {
         unsafe {
             let _ = SetWindowPos(
                 rt.hwnd(),
@@ -607,6 +639,11 @@ pub fn drag_move() {
                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
             );
         }
+        let origin = WindowOrigin {
+            origin_x: left - monitor.left,
+            origin_y: top - monitor.top,
+        };
+        let _ = rt.app.emit("dock://origin", origin);
     }
 }
 

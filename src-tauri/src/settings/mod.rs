@@ -95,7 +95,19 @@ pub struct General {
     pub monitor: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// The user's adjustments to the current theme's glass. `None` keeps the
+/// theme's own value.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GlassOverrides {
+    pub refraction: Option<f64>,
+    pub edge_width: Option<f64>,
+    pub blur: Option<f64>,
+    pub chroma: Option<f64>,
+    pub highlight: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Appearance {
     pub theme: String,
@@ -103,6 +115,7 @@ pub struct Appearance {
     /// Accent colour as `#rrggbb`. `None` follows the Windows accent colour.
     pub accent: Option<String>,
     pub dock_size: DockSize,
+    pub glass: GlassOverrides,
 }
 
 impl Default for Appearance {
@@ -112,6 +125,7 @@ impl Default for Appearance {
             color_scheme: ColorScheme::System,
             accent: None,
             dock_size: DockSize::Medium,
+            glass: GlassOverrides::default(),
         }
     }
 }
@@ -153,7 +167,7 @@ pub struct Notifications {
     pub quiet_hours: QuietHours,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub version: u32,

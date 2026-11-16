@@ -9,12 +9,15 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     MA_NOACTIVATE, WA_INACTIVE, WM_ACTIVATE, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ENDSESSION,
-    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_TIMER, WM_WINDOWPOSCHANGED,
+    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_SETTINGCHANGE, WM_TIMER, WM_WINDOWPOSCHANGED,
 };
 
 use super::{appbar, dock, guard, quit_message, restore_message, taskbar_created_message};
 
 const SUBCLASS_ID: usize = 0x474C_4153; // "GLAS"
+
+/// `wParam` of `WM_SETTINGCHANGE` when the desktop wallpaper changed.
+const SPI_SETDESKWALLPAPER: usize = 0x0014;
 
 /// Must be called on the thread that owns the window.
 pub fn install(hwnd: HWND) -> bool {
@@ -89,6 +92,13 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
         WM_TIMER if wparam.0 == dock::FULLSCREEN_RETRY_TIMER => {
             dock::on_fullscreen_retry();
             Some(LRESULT(0))
+        }
+        // The wallpaper, its fit mode or the background colour changed.
+        WM_SETTINGCHANGE if wparam.0 == SPI_SETDESKWALLPAPER => {
+            if let Some(rt) = dock::runtime() {
+                crate::glass::request_refresh(&rt.app);
+            }
+            None
         }
         // Resolution, monitor set or scaling changed. Tauri handles the
         // message first (it resizes for the new DPI); the posted reposition

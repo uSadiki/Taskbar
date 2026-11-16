@@ -6,6 +6,7 @@ mod commands;
 mod error;
 mod filelog;
 mod geometry;
+mod glass;
 mod paths;
 mod settings;
 mod shell;

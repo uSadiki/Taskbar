@@ -61,6 +61,8 @@ pub fn run(safe: bool) {
             commands::dock_drag_end,
             commands::dock_focus,
             commands::dock_release_focus,
+            commands::glass_info,
+            commands::glass_backdrop,
             commands::list_monitors,
             commands::app_info,
             commands::open_settings,
@@ -131,6 +133,7 @@ fn setup(app: &AppHandle, safe: bool) -> AppResult<()> {
 
     dock::reposition();
     dock::show();
+    crate::glass::start_watching(app);
     hooks::install();
     tray::create(app)?;
     log::info!(

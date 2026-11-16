@@ -9,6 +9,7 @@ use tauri::{AppHandle, State};
 
 use crate::app;
 use crate::error::AppResult;
+use crate::glass::{self, BackdropInfo};
 use crate::geometry::RectF;
 use crate::settings::{Settings, SettingsStore};
 use crate::shell::dock::{self, AppInfo, DockLayout};
@@ -83,6 +84,19 @@ pub fn dock_focus() {
 #[tauri::command]
 pub fn dock_release_focus() {
     dock::release_focus();
+}
+
+#[tauri::command]
+pub fn glass_info() -> BackdropInfo {
+    glass::info()
+}
+
+/// The wallpaper pixels behind the dock's monitor: a 16-byte header followed
+/// by RGBA. Sent as raw bytes, not JSON. Async so the copy happens off the
+/// main thread.
+#[tauri::command]
+pub async fn glass_backdrop() -> tauri::ipc::Response {
+    tauri::ipc::Response::new(glass::packed())
 }
 
 #[tauri::command]
