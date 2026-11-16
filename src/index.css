@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+
+  --text: #1a1c21;
+  --text-muted: #5d6370;
+  --surface: #f3f4f7;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e9ebf0;
+  --border: rgb(0 0 0 / 0.1);
+  --accent: #2f6fed;
+  --accent-text: #ffffff;
+  --warning-bg: #fff4d6;
+  --warning-text: #6b4a00;
+
+  /* Phase 1 stand-in for the glass: a translucent fill. The WebGL renderer
+     replaces this in Phase 2. */
+  --dock-fill: rgb(248 249 252 / 0.78);
+  --dock-border: rgb(255 255 255 / 0.7);
+  --dock-text: #15171c;
+  --dock-text-muted: rgb(21 23 28 / 0.62);
+  --dock-tile: rgb(0 0 0 / 0.06);
+  --dock-tile-hover: rgb(0 0 0 / 0.12);
+  --dock-shadow: 0 6px 18px rgb(0 0 0 / 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #eceef3;
+    --text-muted: #9aa1b0;
+    --surface: #1b1d23;
+    --surface-raised: #25282f;
+    --surface-sunken: #14161a;
+    --border: rgb(255 255 255 / 0.1);
+    --accent: #6ea0ff;
+    --accent-text: #0c1322;
+    --warning-bg: #3d3212;
+    --warning-text: #ffdf8a;
+
+    --dock-fill: rgb(28 30 37 / 0.74);
+    --dock-border: rgb(255 255 255 / 0.16);
+    --dock-text: #f2f4f8;
+    --dock-text-muted: rgb(242 244 248 / 0.62);
+    --dock-tile: rgb(255 255 255 / 0.08);
+    --dock-tile-hover: rgb(255 255 255 / 0.16);
+    --dock-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* The dock window is transparent; only the dock and open menus are painted. */
+html[data-window="dock"],
+html[data-window="dock"] body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+html[data-window="settings"] body {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---- Dock ---------------------------------------------------------------- */
+
+.dock-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  color: var(--dock-text);
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-border);
+  border-radius: 18px;
+  box-shadow: var(--dock-shadow);
+}
+
+.dock-bar[data-layout="full"] {
+  width: 100%;
+  border-radius: 0;
+  border-width: 0;
+  box-shadow: none;
+  padding: 0 12px;
+}
+
+.dock-bar[data-layout="full"][data-edge="bottom"] {
+  border-top-width: 1px;
+}
+
+.dock-bar[data-layout="full"][data-edge="top"] {
+  border-bottom-width: 1px;
+}
+
+.dock-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 0;
+  border-radius: 12px;
+  color: inherit;
+  background: var(--dock-tile);
+  transition: background-color 120ms ease;
+}
+
+.dock-tile:hover {
+  background: var(--dock-tile-hover);
+}
+
+.dock-tile:focus-visible,
+.dock-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dock-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 6px 0 8px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dock-clock-time {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dock-clock-date {
+  font-size: 11px;
+  color: var(--dock-text-muted);
+}
+
+.dock-badge {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+}
+
+.dock-menu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 6px;
+  box-sizing: border-box;
+  color: var(--dock-text);
+  background: var(--dock-fill);
+  border: 1px solid var(--dock-border);
+  border-radius: 14px;
+  box-shadow: var(--dock-shadow);
+  pointer-events: auto;
+}
+
+.dock-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+}
+
+.dock-menu button:hover {
+  background: var(--dock-tile-hover);
+}
+
+.dock-menu hr {
+  width: 100%;
+  height: 1px;
+  margin: 4px 0;
+  border: 0;
+  background: var(--dock-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-tile {
+    transition: none;
+  }
+}
