@@ -19,7 +19,7 @@ use tauri::{AppHandle, Emitter};
 use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize};
 
 use self::decode::Image;
-use self::slice::Fit;
+use self::slice::FitMode;
 use crate::error::AppResult;
 use crate::geometry::Rect;
 use crate::shell::dock;
@@ -31,7 +31,7 @@ struct Signature {
     path: Option<PathBuf>,
     modified: Option<SystemTime>,
     len: u64,
-    fit: Fit,
+    fit: FitMode,
     background: [u8; 3],
     monitor: Rect,
     virtual_desktop: Rect,
@@ -191,7 +191,9 @@ fn refresh_once() -> bool {
             let message = e.to_string();
             let changed = state.backdrop.is_some() || state.error.as_deref() != Some(&message);
             if changed {
-                log::warn!("glass: the wallpaper could not be read ({message}); using the fallback");
+                log::warn!(
+                    "glass: the wallpaper could not be read ({message}); using the fallback"
+                );
                 state.rev = state.rev.wrapping_add(1);
             }
             state.backdrop = None;
@@ -204,7 +206,10 @@ fn refresh_once() -> bool {
 
 fn render(monitor: Rect) -> AppResult<Option<(Signature, Image)>> {
     let wallpaper = wallpaper::query(monitor)?;
-    let metadata = wallpaper.path.as_ref().and_then(|p| std::fs::metadata(p).ok());
+    let metadata = wallpaper
+        .path
+        .as_ref()
+        .and_then(|p| std::fs::metadata(p).ok());
     let signature = Signature {
         path: wallpaper.path.clone(),
         modified: metadata.as_ref().and_then(|m| m.modified().ok()),
@@ -268,7 +273,10 @@ pub fn start_watching(app: &AppHandle) {
     });
     match watcher {
         Ok(watcher) => STATE.lock().watcher = Some(watcher),
-        Err(e) => log::warn!("glass: cannot watch {} for wallpaper changes: {e}", dir.display()),
+        Err(e) => log::warn!(
+            "glass: cannot watch {} for wallpaper changes: {e}",
+            dir.display()
+        ),
     }
 }
 

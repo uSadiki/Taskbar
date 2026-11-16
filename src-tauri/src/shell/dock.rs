@@ -256,6 +256,11 @@ pub fn mark_children_no_activate() {
 pub fn show() {
     let Some(rt) = runtime() else { return };
     mark_children_no_activate();
+    // Stay hidden while a fullscreen app is in front; the fullscreen check
+    // shows the dock again when that app leaves the foreground.
+    if rt.state.lock().fullscreen_hidden {
+        return;
+    }
     unsafe {
         let _ = ShowWindow(rt.hwnd(), SW_SHOWNOACTIVATE);
         let _ = SetWindowPos(
@@ -314,6 +319,9 @@ pub fn reposition() {
             // The dock may be on a different monitor now, or the monitor may
             // have changed size. Cheap when nothing changed.
             crate::glass::request_refresh(&rt.app);
+            // A fullscreen app may already be in front (at startup, or on
+            // the monitor the dock just moved to).
+            evaluate_fullscreen(None);
         }
         Err(e) => log::error!("dock: reposition failed: {e}"),
     }
@@ -579,6 +587,10 @@ pub fn on_foreground_changed(foreground: HWND) {
         log::debug!("dock: the dock window became the foreground window");
         return;
     }
+    // Another window came to the front. If a popover is open it should
+    // close, even when Windows did not let the dock take focus for it (in
+    // which case no deactivation message will ever arrive).
+    let _ = rt.app.emit("dock://blur", ());
     evaluate_fullscreen(Some(foreground));
 }
 
@@ -700,6 +712,7 @@ pub fn release_focus() {
 
 pub fn on_deactivated() {
     if let Some(rt) = runtime() {
+        log::debug!("dock: lost activation");
         let _ = rt.app.emit("dock://blur", ());
     }
 }

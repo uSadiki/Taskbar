@@ -36,6 +36,14 @@ export interface Settings {
     colorScheme: ColorScheme;
     accent: string | null;
     dockSize: DockSize;
+    /** Glass slider overrides; null keeps the theme's value. */
+    glass: {
+      refraction: number | null;
+      edgeWidth: number | null;
+      blur: number | null;
+      chroma: number | null;
+      highlight: number | null;
+    };
   };
   widgets: WidgetEntry[];
   notifications: {
@@ -44,13 +52,13 @@ export interface Settings {
 }
 
 /** A JSON merge patch: any subset of the settings tree; null clears a field. */
-export type SettingsPatch = {
-  [K in keyof Settings]?: Settings[K] extends unknown[]
-    ? Settings[K]
-    : Settings[K] extends object
-      ? { [P in keyof Settings[K]]?: Settings[K][P] | null }
-      : Settings[K];
-};
+export type SettingsPatch = DeepPartial<Settings>;
+
+type DeepPartial<T> = T extends unknown[]
+  ? T
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> | null }
+    : T;
 
 /** Everything in logical (CSS) pixels. */
 export interface DockLayout {
@@ -64,6 +72,25 @@ export interface DockLayout {
   scale: number;
   monitorId: string;
   safeMode: boolean;
+  /** Window origin on its monitor, physical pixels. */
+  originX: number;
+  originY: number;
+  /** Monitor size, physical pixels. */
+  monitorWidth: number;
+  monitorHeight: number;
+}
+
+export interface WindowOrigin {
+  originX: number;
+  originY: number;
+}
+
+export interface BackdropInfo {
+  rev: number;
+  width: number;
+  height: number;
+  available: boolean;
+  error: string | null;
 }
 
 export interface PhysicalRect {

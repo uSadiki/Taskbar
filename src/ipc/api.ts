@@ -2,11 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppInfo,
+  BackdropInfo,
   CssRect,
   DockLayout,
   MonitorInfo,
   Settings,
   SettingsPatch,
+  WindowOrigin,
 } from "./types";
 
 /** Typed wrappers around the backend commands in src-tauri/src/commands.rs. */
@@ -20,6 +22,10 @@ export const api = {
   dockDragEnd: () => invoke<void>("dock_drag_end"),
   dockFocus: () => invoke<void>("dock_focus"),
   dockReleaseFocus: () => invoke<void>("dock_release_focus"),
+  glassInfo: () => invoke<BackdropInfo>("glass_info"),
+  /** 16-byte header (rev, width, height, reserved as u32 LE) then RGBA. */
+  glassBackdrop: () => invoke<ArrayBuffer>("glass_backdrop"),
+  openGlassLab: () => invoke<void>("open_glass_lab"),
   listMonitors: () => invoke<MonitorInfo[]>("list_monitors"),
   appInfo: () => invoke<AppInfo>("app_info"),
   openSettings: () => invoke<void>("open_settings"),
@@ -35,6 +41,10 @@ export const events = {
   dockLayout: (cb: (layout: DockLayout) => void): Promise<UnlistenFn> =>
     listen<DockLayout>("dock://layout", (e) => cb(e.payload)),
   dockBlur: (cb: () => void): Promise<UnlistenFn> => listen("dock://blur", () => cb()),
+  dockOrigin: (cb: (origin: WindowOrigin) => void): Promise<UnlistenFn> =>
+    listen<WindowOrigin>("dock://origin", (e) => cb(e.payload)),
+  backdrop: (cb: (info: BackdropInfo) => void): Promise<UnlistenFn> =>
+    listen<BackdropInfo>("glass://backdrop", (e) => cb(e.payload)),
   appInfo: (cb: (info: AppInfo) => void): Promise<UnlistenFn> =>
     listen<AppInfo>("app://info", (e) => cb(e.payload)),
 };

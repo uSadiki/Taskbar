@@ -8,14 +8,14 @@ use std::path::Path;
 
 use windows::Win32::Foundation::GENERIC_READ;
 use windows::Win32::Graphics::Imaging::{
-    CLSID_WICImagingFactory, GUID_WICPixelFormat32bppPRGBA, IWICBitmapSource, IWICImagingFactory,
+    CLSID_WICImagingFactory, GUID_WICPixelFormat32bppPBGRA, IWICBitmapSource, IWICImagingFactory,
     WICBitmapDitherTypeNone, WICBitmapInterpolationModeFant, WICBitmapPaletteTypeCustom,
     WICDecodeMetadataCacheOnDemand, WICRect,
 };
 use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
 use windows::core::{HSTRING, Interface};
 
-use super::slice::{self, Fit};
+use super::slice::{self, FitMode};
 use crate::error::{AppError, AppResult};
 use crate::geometry::Rect;
 
@@ -31,11 +31,16 @@ impl Image {
     pub fn solid(width: u32, height: u32, color: [u8; 3]) -> Self {
         let pixel = [color[0], color[1], color[2], 255];
         let rgba = pixel.repeat(width as usize * height as usize);
-        Self { width, height, rgba }
+        Self {
+            width,
+            height,
+            rgba,
+        }
     }
 }
 
-/// Copy premultiplied RGBA `src` rows onto opaque `dst`, blending any
+/// Copy premultiplied BGRA `src` rows (WIC's native order) onto the opaque
+/// RGBA `dst`, swapping red and blue on the way and blending any
 /// transparency over what is already there (the background colour).
 fn composite(dst: &mut Image, src: &[u8], src_w: i32, src_h: i32, dst_x: i32, dst_y: i32) {
     for row in 0..src_h {
@@ -43,14 +48,21 @@ fn composite(dst: &mut Image, src: &[u8], src_w: i32, src_h: i32, dst_x: i32, ds
         let d = (((dst_y + row) * dst.width as i32 + dst_x) * 4) as usize;
         let src_row = &src[s..s + (src_w * 4) as usize];
         let dst_row = &mut dst.rgba[d..d + (src_w * 4) as usize];
-        for (out, px) in dst_row.chunks_exact_mut(4).zip(src_row.chunks_exact(4)) {
+        for (out, px) in dst_row
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(src_row.as_chunks::<4>().0.iter())
+        {
+            // Source bytes are B, G, R, A; the output is R, G, B, A.
+            let source = [px[2], px[1], px[0]];
             let alpha = u32::from(px[3]);
             if alpha == 255 {
-                out[..3].copy_from_slice(&px[..3]);
+                out[..3].copy_from_slice(&source);
             } else if alpha > 0 {
                 for c in 0..3 {
                     // Source is premultiplied: out = src + dst * (1 - alpha).
-                    let blended = u32::from(px[c]) + u32::from(out[c]) * (255 - alpha) / 255;
+                    let blended = u32::from(source[c]) + u32::from(out[c]) * (255 - alpha) / 255;
                     out[c] = blended.min(255) as u8;
                 }
             }
@@ -62,7 +74,12 @@ fn composite(dst: &mut Image, src: &[u8], src_w: i32, src_h: i32, dst_x: i32, ds
 fn copy_region(source: &IWICBitmapSource, region: Rect) -> AppResult<Vec<u8>> {
     let (w, h) = (region.width(), region.height());
     let mut buffer = vec![0u8; (w as usize) * (h as usize) * 4];
-    let rect = WICRect { X: region.left, Y: region.top, Width: w, Height: h };
+    let rect = WICRect {
+        X: region.left,
+        Y: region.top,
+        Width: w,
+        Height: h,
+    };
     unsafe { source.CopyPixels(&rect, (w * 4) as u32, &mut buffer)? };
     Ok(buffer)
 }
@@ -71,7 +88,7 @@ fn copy_region(source: &IWICBitmapSource, region: Rect) -> AppResult<Vec<u8>> {
 /// `background`. The result is exactly the monitor's size.
 pub fn render(
     path: &Path,
-    fit: Fit,
+    fit: FitMode,
     background: [u8; 3],
     monitor: Rect,
     virtual_desktop: Rect,
@@ -99,12 +116,14 @@ pub fn render(
             return Ok(out);
         };
 
-        // Premultiplied RGBA, so transparent wallpapers blend over the
+        // Premultiplied BGRA is the one format every WIC stage handles
+        // natively. (Asking for RGBA does not survive the scaler, which hands
+        // back BGRA regardless.) Premultiplied so transparent wallpapers blend over the
         // background colour and the scaler doesn't fringe at alpha edges.
         let converter = factory.CreateFormatConverter()?;
         converter.Initialize(
             &frame,
-            &GUID_WICPixelFormat32bppPRGBA,
+            &GUID_WICPixelFormat32bppPBGRA,
             WICBitmapDitherTypeNone,
             None,
             0.0,
@@ -165,14 +184,22 @@ mod tests {
     fn solid_image_is_opaque_and_uniform() {
         let image = Image::solid(3, 2, [10, 20, 30]);
         assert_eq!(image.rgba.len(), 24);
-        assert!(image.rgba.chunks_exact(4).all(|p| p == [10, 20, 30, 255]));
+        assert!(
+            image
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| *p == [10, 20, 30, 255])
+        );
     }
 
     #[test]
     fn opaque_pixels_replace_and_transparent_pixels_keep_the_background() {
         let mut dst = Image::solid(3, 1, [100, 100, 100]);
-        // Opaque red, fully transparent, half-transparent white (premultiplied).
-        let src = [255, 0, 0, 255, 0, 0, 0, 0, 128, 128, 128, 128];
+        // BGRA source: opaque red, fully transparent, half-transparent white
+        // (premultiplied).
+        let src = [0, 0, 255, 255, 0, 0, 0, 0, 128, 128, 128, 128];
         composite(&mut dst, &src, 3, 1, 0, 0);
         assert_eq!(&dst.rgba[0..4], &[255, 0, 0, 255]);
         assert_eq!(&dst.rgba[4..8], &[100, 100, 100, 255]);

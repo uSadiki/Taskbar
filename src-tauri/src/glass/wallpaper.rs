@@ -11,7 +11,7 @@ use windows::Win32::UI::Shell::{
 };
 use windows::core::{PCWSTR, PWSTR};
 
-use super::slice::Fit;
+use super::slice::FitMode;
 use crate::error::AppResult;
 use crate::geometry::Rect;
 
@@ -19,22 +19,22 @@ use crate::geometry::Rect;
 pub struct WallpaperInfo {
     /// The image shown on the monitor, or `None` for a solid colour.
     pub path: Option<PathBuf>,
-    pub fit: Fit,
+    pub fit: FitMode,
     /// Desktop background colour, shown behind and around the image.
     pub background: [u8; 3],
     /// Bounding rectangle of all monitors.
     pub virtual_desktop: Rect,
 }
 
-fn fit_from(position: DESKTOP_WALLPAPER_POSITION) -> Fit {
+fn fit_from(position: DESKTOP_WALLPAPER_POSITION) -> FitMode {
     match position {
-        DWPOS_CENTER => Fit::Center,
-        DWPOS_TILE => Fit::Tile,
-        DWPOS_STRETCH => Fit::Stretch,
-        DWPOS_FIT => Fit::Fit,
-        DWPOS_SPAN => Fit::Span,
-        DWPOS_FILL => Fit::Fill,
-        _ => Fit::Fill,
+        DWPOS_CENTER => FitMode::Center,
+        DWPOS_TILE => FitMode::Tile,
+        DWPOS_STRETCH => FitMode::Stretch,
+        DWPOS_FIT => FitMode::Fit,
+        DWPOS_SPAN => FitMode::Span,
+        DWPOS_FILL => FitMode::Fill,
+        _ => FitMode::Fill,
     }
 }
 
@@ -49,7 +49,12 @@ unsafe fn take_string(value: PWSTR) -> String {
 }
 
 fn union(a: Rect, b: Rect) -> Rect {
-    Rect::new(a.left.min(b.left), a.top.min(b.top), a.right.max(b.right), a.bottom.max(b.bottom))
+    Rect::new(
+        a.left.min(b.left),
+        a.top.min(b.top),
+        a.right.max(b.right),
+        a.bottom.max(b.bottom),
+    )
 }
 
 /// The wallpaper for the monitor whose rectangle is `monitor`.
@@ -94,7 +99,11 @@ pub fn query(monitor: Rect) -> AppResult<WallpaperInfo> {
             path: (!path.is_empty()).then(|| PathBuf::from(path)),
             fit: fit_from(desktop.GetPosition()?),
             // COLORREF is 0x00BBGGRR.
-            background: [(color & 0xFF) as u8, ((color >> 8) & 0xFF) as u8, ((color >> 16) & 0xFF) as u8],
+            background: [
+                (color & 0xFF) as u8,
+                ((color >> 8) & 0xFF) as u8,
+                ((color >> 16) & 0xFF) as u8,
+            ],
             virtual_desktop,
         })
     }
@@ -120,12 +129,12 @@ mod tests {
 
     #[test]
     fn maps_every_position() {
-        assert_eq!(fit_from(DWPOS_CENTER), Fit::Center);
-        assert_eq!(fit_from(DWPOS_TILE), Fit::Tile);
-        assert_eq!(fit_from(DWPOS_STRETCH), Fit::Stretch);
-        assert_eq!(fit_from(DWPOS_FIT), Fit::Fit);
-        assert_eq!(fit_from(DWPOS_FILL), Fit::Fill);
-        assert_eq!(fit_from(DWPOS_SPAN), Fit::Span);
+        assert_eq!(fit_from(DWPOS_CENTER), FitMode::Center);
+        assert_eq!(fit_from(DWPOS_TILE), FitMode::Tile);
+        assert_eq!(fit_from(DWPOS_STRETCH), FitMode::Stretch);
+        assert_eq!(fit_from(DWPOS_FIT), FitMode::Fit);
+        assert_eq!(fit_from(DWPOS_FILL), FitMode::Fill);
+        assert_eq!(fit_from(DWPOS_SPAN), FitMode::Span);
     }
 
     #[test]

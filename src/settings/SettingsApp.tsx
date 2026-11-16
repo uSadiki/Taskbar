@@ -13,6 +13,8 @@ import { WIDGETS } from "../dock/widgets";
 import { api, report } from "../ipc/api";
 import type { AppInfo, MonitorInfo, Settings, SettingsPatch } from "../ipc/types";
 import { useApp } from "../stores/app";
+import { useScheme } from "../themes/useAppearance";
+import { Appearance } from "./AppearanceSection";
 import { Button, Notice, Row, Section, Segmented, Toggle } from "./controls";
 
 type SectionId = "general" | "appearance" | "widgets" | "notifications" | "about";
@@ -32,6 +34,7 @@ export function SettingsApp() {
   const info = useApp((s) => s.info);
   const update = useApp((s) => s.update);
   const [section, setSection] = useState<SectionId>("general");
+  useScheme(settings?.appearance.colorScheme);
 
   if (!settings) {
     return <div className="grid h-full place-items-center text-[var(--text-muted)]">Loading settings</div>;
@@ -153,33 +156,6 @@ function General({ settings, info, update }: { settings: Settings; info: AppInfo
         <Row label="Start at login" description="Arrives with the installer in phase 6.">
           <Toggle label="Start at login" checked={general.autostart} disabled onChange={() => {}} />
         </Row>
-      </Section>
-    </>
-  );
-}
-
-function Appearance({ settings, update }: { settings: Settings; update: Update }) {
-  return (
-    <>
-      <Section title="Dock">
-        <Row label="Size">
-          <Segmented
-            label="Dock size"
-            value={settings.appearance.dockSize}
-            options={[
-              { value: "small", label: "Small" },
-              { value: "medium", label: "Medium" },
-              { value: "large", label: "Large" },
-            ]}
-            onChange={(dockSize) => update({ appearance: { dockSize } })}
-          />
-        </Row>
-      </Section>
-      <Section title="Glass and themes">
-        <Row
-          label="Theme, glass sliders and accent colour"
-          description="Arrive with the liquid glass renderer in phase 2. The dock currently uses a plain translucent fill."
-        />
       </Section>
     </>
   );

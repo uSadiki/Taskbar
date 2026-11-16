@@ -9,8 +9,8 @@ use tauri::{AppHandle, State};
 
 use crate::app;
 use crate::error::AppResult;
-use crate::glass::{self, BackdropInfo};
 use crate::geometry::RectF;
+use crate::glass::{self, BackdropInfo};
 use crate::settings::{Settings, SettingsStore};
 use crate::shell::dock::{self, AppInfo, DockLayout};
 use crate::shell::monitors::{self, MonitorInfo};
@@ -112,6 +112,11 @@ pub fn app_info() -> AppInfo {
 #[tauri::command]
 pub async fn open_settings(app: AppHandle) -> AppResult<()> {
     app::open_settings(&app)
+}
+
+#[tauri::command]
+pub async fn open_glass_lab(app: AppHandle) -> AppResult<()> {
+    app::open_glass_lab(&app)
 }
 
 #[tauri::command]

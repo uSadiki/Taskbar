@@ -6,49 +6,37 @@
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 
+  /* Ordinary windows (Settings, glass lab). */
   --text: #1a1c21;
   --text-muted: #5d6370;
   --surface: #f3f4f7;
   --surface-raised: #ffffff;
-  --surface-sunken: #e9ebf0;
+  --surface-sunken: #e6e8ee;
   --border: rgb(0 0 0 / 0.1);
-  --accent: #2f6fed;
-  --accent-text: #ffffff;
   --warning-bg: #fff4d6;
   --warning-text: #6b4a00;
 
-  /* Phase 1 stand-in for the glass: a translucent fill. The WebGL renderer
-     replaces this in Phase 2. */
-  --dock-fill: rgb(248 249 252 / 0.78);
-  --dock-border: rgb(255 255 255 / 0.7);
-  --dock-text: #15171c;
-  --dock-text-muted: rgb(21 23 28 / 0.62);
-  --dock-tile: rgb(0 0 0 / 0.06);
-  --dock-tile-hover: rgb(0 0 0 / 0.12);
-  --dock-shadow: 0 6px 18px rgb(0 0 0 / 0.22);
+  /* Accent: the one colour that marks "current" and "on". */
+  --accent: #2f6fed;
+  --accent-ink: #ffffff;
+
+  /* Status colours for rings and meters. */
+  --good: #2fbf71;
+  --warn: #f0a630;
+  --bad: #ef5350;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #eceef3;
-    --text-muted: #9aa1b0;
-    --surface: #1b1d23;
-    --surface-raised: #25282f;
-    --surface-sunken: #14161a;
-    --border: rgb(255 255 255 / 0.1);
-    --accent: #6ea0ff;
-    --accent-text: #0c1322;
-    --warning-bg: #3d3212;
-    --warning-text: #ffdf8a;
-
-    --dock-fill: rgb(28 30 37 / 0.74);
-    --dock-border: rgb(255 255 255 / 0.16);
-    --dock-text: #f2f4f8;
-    --dock-text-muted: rgb(242 244 248 / 0.62);
-    --dock-tile: rgb(255 255 255 / 0.08);
-    --dock-tile-hover: rgb(255 255 255 / 0.16);
-    --dock-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
-  }
+:root[data-scheme="dark"] {
+  --text: #eceef3;
+  --text-muted: #9aa1b0;
+  --surface: #1b1d23;
+  --surface-raised: #25282f;
+  --surface-sunken: #131519;
+  --border: rgb(255 255 255 / 0.1);
+  --warning-bg: #3d3212;
+  --warning-text: #ffdf8a;
+  --accent: #6ea0ff;
+  --accent-ink: #0c1322;
 }
 
 html,
@@ -58,7 +46,7 @@ body,
   margin: 0;
 }
 
-/* The dock window is transparent; only the dock and open menus are painted. */
+/* The dock window is transparent; the glass canvas paints the surfaces. */
 html[data-window="dock"],
 html[data-window="dock"] body {
   background: transparent;
@@ -67,9 +55,48 @@ html[data-window="dock"] body {
   cursor: default;
 }
 
-html[data-window="settings"] body {
+html[data-window="settings"] body,
+html[data-window="glasslab"] body {
   background: var(--surface);
   color: var(--text);
+}
+
+/* ---- Content on glass ------------------------------------------------------
+   Content is either light (on dark glass) or dark (on light glass). The tone
+   is chosen per surface from the wallpaper behind it. */
+
+.glass-content {
+  color: var(--ink);
+}
+
+.glass-content[data-tone="light"] {
+  --ink: #ffffff;
+  --ink-muted: rgb(255 255 255 / 0.7);
+  --ink-faint: rgb(255 255 255 / 0.42);
+  --fill: rgb(255 255 255 / 0.1);
+  --fill-hover: rgb(255 255 255 / 0.2);
+  --stroke: rgb(255 255 255 / 0.16);
+  --accent: var(--accent-user, #8ab4ff);
+  --accent-ink: var(--accent-user-ink, #08101f);
+  /* Keeps thin text readable where the wallpaper is busy. */
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.28);
+}
+
+.glass-content[data-tone="dark"] {
+  --ink: #101216;
+  --ink-muted: rgb(16 18 22 / 0.68);
+  --ink-faint: rgb(16 18 22 / 0.42);
+  --fill: rgb(0 0 0 / 0.07);
+  --fill-hover: rgb(0 0 0 / 0.14);
+  --stroke: rgb(0 0 0 / 0.12);
+  --accent: var(--accent-user, #1f5fe0);
+  --accent-ink: var(--accent-user-ink, #ffffff);
+  text-shadow: 0 1px 1px rgb(255 255 255 / 0.25);
+}
+
+.glass-content :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ---- Dock ---------------------------------------------------------------- */
@@ -80,27 +107,11 @@ html[data-window="settings"] body {
   gap: 6px;
   padding: 0 8px;
   box-sizing: border-box;
-  color: var(--dock-text);
-  background: var(--dock-fill);
-  border: 1px solid var(--dock-border);
-  border-radius: 18px;
-  box-shadow: var(--dock-shadow);
 }
 
 .dock-bar[data-layout="full"] {
   width: 100%;
-  border-radius: 0;
-  border-width: 0;
-  box-shadow: none;
   padding: 0 12px;
-}
-
-.dock-bar[data-layout="full"][data-edge="bottom"] {
-  border-top-width: 1px;
-}
-
-.dock-bar[data-layout="full"][data-edge="top"] {
-  border-bottom-width: 1px;
 }
 
 .dock-tile {
@@ -110,18 +121,14 @@ html[data-window="settings"] body {
   border: 0;
   border-radius: 12px;
   color: inherit;
-  background: var(--dock-tile);
+  background: var(--fill);
   transition: background-color 120ms ease;
 }
 
-.dock-tile:hover {
-  background: var(--dock-tile-hover);
-}
-
-.dock-tile:focus-visible,
-.dock-menu button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.dock-tile:hover,
+.dock-clock:hover,
+.dock-clock[aria-expanded="true"] {
+  background: var(--fill-hover);
 }
 
 .dock-clock {
@@ -129,10 +136,19 @@ html[data-window="settings"] body {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 6px 0 8px;
+  align-self: stretch;
+  margin: 6px 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: inherit;
+  text-shadow: inherit;
+  background: transparent;
+  transition: background-color 120ms ease;
 }
 
 .dock-clock-time {
@@ -142,63 +158,97 @@ html[data-window="settings"] body {
 
 .dock-clock-date {
   font-size: 11px;
-  color: var(--dock-text-muted);
+  color: var(--ink-muted);
 }
 
 .dock-badge {
   flex: none;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--warning-text);
   background: var(--warning-bg);
+  text-shadow: none;
 }
 
-.dock-menu {
-  position: absolute;
+/* ---- Popover content ------------------------------------------------------ */
+
+.glass-button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  text-shadow: inherit;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.glass-button:hover {
+  background: var(--fill-hover);
+}
+
+.glass-menu {
   display: flex;
   flex-direction: column;
-  min-width: 190px;
   padding: 6px;
-  box-sizing: border-box;
-  color: var(--dock-text);
-  background: var(--dock-fill);
-  border: 1px solid var(--dock-border);
-  border-radius: 14px;
-  box-shadow: var(--dock-shadow);
-  pointer-events: auto;
 }
 
-.dock-menu button {
+.glass-menu button {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   font: inherit;
   font-size: 13px;
   text-align: left;
   color: inherit;
+  text-shadow: inherit;
   background: transparent;
 }
 
-.dock-menu button:hover {
-  background: var(--dock-tile-hover);
+.glass-menu button:hover {
+  background: var(--fill-hover);
 }
 
-.dock-menu hr {
+.glass-menu hr {
   width: 100%;
   height: 1px;
   margin: 4px 0;
   border: 0;
-  background: var(--dock-border);
+  background: var(--stroke);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dock-tile {
+  .dock-tile,
+  .dock-clock,
+  .glass-button {
     transition: none;
   }
+}
+
+/* ---- Range inputs (Settings, glass lab) ----------------------------------- */
+
+input[type="range"].slider {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  border-radius: 2px;
+  background: var(--surface-sunken);
+  outline-offset: 4px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
 }

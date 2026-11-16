@@ -11,7 +11,7 @@ use crate::geometry::Rect;
 /// The wallpaper position setting (Settings > Personalisation > Background).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum Fit {
+pub enum FitMode {
     Center,
     Tile,
     Stretch,
@@ -55,7 +55,12 @@ fn centred(outer: i32, inner: i32) -> i32 {
 /// Place an `image` (width, height) on `monitor`. `virtual_desktop` is the
 /// bounding rectangle of all monitors, which Span and Tile are anchored to.
 /// Returns `None` for an empty image or monitor.
-pub fn place(fit: Fit, image: (u32, u32), monitor: Rect, virtual_desktop: Rect) -> Option<Placement> {
+pub fn place(
+    fit: FitMode,
+    image: (u32, u32),
+    monitor: Rect,
+    virtual_desktop: Rect,
+) -> Option<Placement> {
     let (iw, ih) = image;
     let (mw, mh) = (monitor.width(), monitor.height());
     if iw == 0 || ih == 0 || mw <= 0 || mh <= 0 {
@@ -65,26 +70,50 @@ pub fn place(fit: Fit, image: (u32, u32), monitor: Rect, virtual_desktop: Rect) 
     let contain = |w: i32, h: i32| (f64::from(w) / f64::from(iw)).min(f64::from(h) / f64::from(ih));
 
     let placement = match fit {
-        Fit::Fill => {
+        FitMode::Fill => {
             let factor = cover(mw, mh);
             // Never fall a pixel short of the monitor because of rounding.
-            let (w, h) = (scaled(iw, factor).max(mw as u32), scaled(ih, factor).max(mh as u32));
-            Placement { width: w, height: h, x: centred(mw, w as i32), y: centred(mh, h as i32), tile: false }
+            let (w, h) = (
+                scaled(iw, factor).max(mw as u32),
+                scaled(ih, factor).max(mh as u32),
+            );
+            Placement {
+                width: w,
+                height: h,
+                x: centred(mw, w as i32),
+                y: centred(mh, h as i32),
+                tile: false,
+            }
         }
-        Fit::Fit => {
+        FitMode::Fit => {
             let factor = contain(mw, mh);
-            let (w, h) = (scaled(iw, factor).min(mw as u32), scaled(ih, factor).min(mh as u32));
-            Placement { width: w, height: h, x: centred(mw, w as i32), y: centred(mh, h as i32), tile: false }
+            let (w, h) = (
+                scaled(iw, factor).min(mw as u32),
+                scaled(ih, factor).min(mh as u32),
+            );
+            Placement {
+                width: w,
+                height: h,
+                x: centred(mw, w as i32),
+                y: centred(mh, h as i32),
+                tile: false,
+            }
         }
-        Fit::Stretch => Placement { width: mw as u32, height: mh as u32, x: 0, y: 0, tile: false },
-        Fit::Center => Placement {
+        FitMode::Stretch => Placement {
+            width: mw as u32,
+            height: mh as u32,
+            x: 0,
+            y: 0,
+            tile: false,
+        },
+        FitMode::Center => Placement {
             width: iw,
             height: ih,
             x: centred(mw, iw as i32),
             y: centred(mh, ih as i32),
             tile: false,
         },
-        Fit::Tile => Placement {
+        FitMode::Tile => Placement {
             width: iw,
             height: ih,
             // The tile grid starts at the virtual desktop's corner, so tiles
@@ -93,10 +122,16 @@ pub fn place(fit: Fit, image: (u32, u32), monitor: Rect, virtual_desktop: Rect) 
             y: -(monitor.top - virtual_desktop.top).rem_euclid(ih as i32),
             tile: true,
         },
-        Fit::Span => {
-            let (vw, vh) = (virtual_desktop.width().max(1), virtual_desktop.height().max(1));
+        FitMode::Span => {
+            let (vw, vh) = (
+                virtual_desktop.width().max(1),
+                virtual_desktop.height().max(1),
+            );
             let factor = cover(vw, vh);
-            let (w, h) = (scaled(iw, factor).max(vw as u32), scaled(ih, factor).max(vh as u32));
+            let (w, h) = (
+                scaled(iw, factor).max(vw as u32),
+                scaled(ih, factor).max(vh as u32),
+            );
             Placement {
                 width: w,
                 height: h,
@@ -153,28 +188,35 @@ mod tests {
 
     const MONITOR: Rect = Rect::new(0, 0, 2560, 1600);
 
-    fn place_single(fit: Fit, image: (u32, u32)) -> Placement {
+    fn place_single(fit: FitMode, image: (u32, u32)) -> Placement {
         place(fit, image, MONITOR, MONITOR).unwrap()
     }
 
     #[test]
     fn fill_crops_the_longer_axis_and_centres() {
         // 16:9 image on a 16:10 monitor: height matches, sides are cropped.
-        let p = place_single(Fit::Fill, (3840, 2160));
+        let p = place_single(FitMode::Fill, (3840, 2160));
         assert_eq!((p.width, p.height), (2844, 1600));
         assert_eq!((p.x, p.y), (-142, 0));
         assert!(!p.tile);
 
         // Portrait image: width matches, top and bottom are cropped.
-        let p = place_single(Fit::Fill, (1000, 2000));
+        let p = place_single(FitMode::Fill, (1000, 2000));
         assert_eq!((p.width, p.height), (2560, 5120));
         assert_eq!((p.x, p.y), (0, -1760));
     }
 
     #[test]
     fn fill_always_covers_the_whole_monitor() {
-        for image in [(1, 1), (7, 3), (1921, 1079), (3000, 1875), (2560, 1600), (5000, 100)] {
-            let p = place_single(Fit::Fill, image);
+        for image in [
+            (1, 1),
+            (7, 3),
+            (1921, 1079),
+            (3000, 1875),
+            (2560, 1600),
+            (5000, 100),
+        ] {
+            let p = place_single(FitMode::Fill, image);
             assert!(p.x <= 0 && p.y <= 0, "{image:?}");
             assert!(p.x + p.width as i32 >= 2560, "{image:?}");
             assert!(p.y + p.height as i32 >= 1600, "{image:?}");
@@ -184,43 +226,55 @@ mod tests {
     #[test]
     fn fit_letterboxes_and_centres() {
         // 16:9 on 16:10: full width, bars above and below.
-        let p = place_single(Fit::Fit, (1920, 1080));
+        let p = place_single(FitMode::Fit, (1920, 1080));
         assert_eq!((p.width, p.height), (2560, 1440));
         assert_eq!((p.x, p.y), (0, 80));
 
         // Portrait: full height, bars left and right.
-        let p = place_single(Fit::Fit, (1000, 2000));
+        let p = place_single(FitMode::Fit, (1000, 2000));
         assert_eq!((p.width, p.height), (800, 1600));
         assert_eq!((p.x, p.y), (880, 0));
     }
 
     #[test]
     fn stretch_ignores_aspect_ratio() {
-        let p = place_single(Fit::Stretch, (100, 900));
-        assert_eq!(p, Placement { width: 2560, height: 1600, x: 0, y: 0, tile: false });
+        let p = place_single(FitMode::Stretch, (100, 900));
+        assert_eq!(
+            p,
+            Placement {
+                width: 2560,
+                height: 1600,
+                x: 0,
+                y: 0,
+                tile: false
+            }
+        );
     }
 
     #[test]
     fn center_keeps_the_image_size() {
         // Smaller than the monitor: surrounded by background.
-        let p = place_single(Fit::Center, (1000, 600));
+        let p = place_single(FitMode::Center, (1000, 600));
         assert_eq!((p.width, p.height, p.x, p.y), (1000, 600, 780, 500));
 
         // Larger than the monitor: cropped equally on both sides.
-        let p = place_single(Fit::Center, (4000, 2000));
+        let p = place_single(FitMode::Center, (4000, 2000));
         assert_eq!((p.x, p.y), (-720, -200));
     }
 
     #[test]
     fn tile_starts_at_the_virtual_desktop_corner() {
-        let p = place_single(Fit::Tile, (300, 200));
-        assert_eq!((p.width, p.height, p.x, p.y, p.tile), (300, 200, 0, 0, true));
+        let p = place_single(FitMode::Tile, (300, 200));
+        assert_eq!(
+            (p.width, p.height, p.x, p.y, p.tile),
+            (300, 200, 0, 0, true)
+        );
 
         // A second monitor to the right of a 1920-wide one: 1920 mod 300 = 120
         // pixels of a tile are already used up by the first monitor.
         let right = Rect::new(1920, 0, 4480, 1600);
         let desktop = Rect::new(0, 0, 4480, 1600);
-        let p = place(Fit::Tile, (300, 200), right, desktop).unwrap();
+        let p = place(FitMode::Tile, (300, 200), right, desktop).unwrap();
         assert_eq!((p.x, p.y), (-120, 0));
     }
 
@@ -230,54 +284,78 @@ mod tests {
         let left = Rect::new(0, 0, 1920, 1080);
         let right = Rect::new(1920, 0, 3840, 1080);
         let desktop = Rect::new(0, 0, 3840, 1080);
-        let on_left = place(Fit::Span, (4000, 2000), left, desktop).unwrap();
-        let on_right = place(Fit::Span, (4000, 2000), right, desktop).unwrap();
+        let on_left = place(FitMode::Span, (4000, 2000), left, desktop).unwrap();
+        let on_right = place(FitMode::Span, (4000, 2000), right, desktop).unwrap();
         assert_eq!((on_left.width, on_left.height), (3840, 1920));
         assert_eq!((on_left.x, on_left.y), (0, -420));
         // The right monitor shows the right half of the same scaled image.
         assert_eq!((on_right.x, on_right.y), (-1920, -420));
 
         // On a single monitor Span is the same as Fill.
-        assert_eq!(place_single(Fit::Span, (3840, 2160)), place_single(Fit::Fill, (3840, 2160)));
+        assert_eq!(
+            place_single(FitMode::Span, (3840, 2160)),
+            place_single(FitMode::Fill, (3840, 2160))
+        );
     }
 
     #[test]
     fn empty_inputs_have_no_placement() {
-        assert_eq!(place(Fit::Fill, (0, 100), MONITOR, MONITOR), None);
-        assert_eq!(place(Fit::Fill, (100, 100), Rect::new(0, 0, 0, 0), MONITOR), None);
+        assert_eq!(place(FitMode::Fill, (0, 100), MONITOR, MONITOR), None);
+        assert_eq!(
+            place(FitMode::Fill, (100, 100), Rect::new(0, 0, 0, 0), MONITOR),
+            None
+        );
     }
 
     #[test]
     fn single_blit_for_a_strip_of_a_filled_monitor() {
-        let p = place_single(Fit::Fill, (3840, 2160)); // 2844x1600 at (-142, 0)
+        let p = place_single(FitMode::Fill, (3840, 2160)); // 2844x1600 at (-142, 0)
         // The dock's strip: the bottom 102 pixels.
         let strip = Rect::new(0, 1498, 2560, 1600);
         assert_eq!(
             blits(&p, strip),
-            vec![Blit { src: Rect::new(142, 1498, 2702, 1600), dst_x: 0, dst_y: 0 }]
+            vec![Blit {
+                src: Rect::new(142, 1498, 2702, 1600),
+                dst_x: 0,
+                dst_y: 0
+            }]
         );
     }
 
     #[test]
     fn letterbox_bars_are_left_to_the_background() {
-        let p = place_single(Fit::Fit, (1920, 1080)); // 2560x1440 at (0, 80)
+        let p = place_single(FitMode::Fit, (1920, 1080)); // 2560x1440 at (0, 80)
         // Whole monitor: the image starts 80 pixels down.
         assert_eq!(
             blits(&p, MONITOR),
-            vec![Blit { src: Rect::new(0, 0, 2560, 1440), dst_x: 0, dst_y: 80 }]
+            vec![Blit {
+                src: Rect::new(0, 0, 2560, 1440),
+                dst_x: 0,
+                dst_y: 80
+            }]
         );
         // The bottom 60 pixels are entirely inside the lower bar.
         assert_eq!(blits(&p, Rect::new(0, 1540, 2560, 1600)), vec![]);
         // A strip straddling the bar: only its top 20 pixels have image.
         assert_eq!(
             blits(&p, Rect::new(0, 1500, 2560, 1600)),
-            vec![Blit { src: Rect::new(0, 1420, 2560, 1440), dst_x: 0, dst_y: 0 }]
+            vec![Blit {
+                src: Rect::new(0, 1420, 2560, 1440),
+                dst_x: 0,
+                dst_y: 0
+            }]
         );
     }
 
     #[test]
     fn tiles_cover_the_target_exactly_once() {
-        let p = Placement { width: 300, height: 200, x: -120, y: 0, tile: true };
+        let p = Placement {
+            width: 300,
+            height: 200,
+            x: -120,
+            y: 0,
+            tile: true,
+        };
         let target = Rect::new(100, 150, 700, 450);
         let pieces = blits(&p, target);
 
@@ -292,6 +370,13 @@ mod tests {
             assert!(b.dst_y + b.src.height() <= target.height());
         }
         // First piece: target.left = 100 falls 220px into the tile that starts at -120.
-        assert_eq!(pieces[0], Blit { src: Rect::new(220, 150, 300, 200), dst_x: 0, dst_y: 0 });
+        assert_eq!(
+            pieces[0],
+            Blit {
+                src: Rect::new(220, 150, 300, 200),
+                dst_x: 0,
+                dst_y: 0
+            }
+        );
     }
 }

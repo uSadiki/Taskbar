@@ -7,8 +7,8 @@ The plan is in [PLAN.md](PLAN.md). This file records what is done, what was deci
 | Phase | State |
 |---|---|
 | 0. Prerequisites and plan | Done 2026-11-16 |
-| 1. Dock shell | Built 2026-11-16; waiting for your full-mode test |
-| 2. Liquid glass | Not started |
+| 1. Dock shell | Done 2026-11-16, verified in full mode |
+| 2. Liquid glass | Done 2026-11-17 |
 | 3. Apps widget | Not started |
 | 4. Now Playing, Battery Ring, Quick Toggles | Not started |
 | 5. Weather, GitHub Activity, Claude Usage | Not started |
@@ -82,6 +82,48 @@ Release build, safe mode, dock idle with seven placeholder tiles and the clock, 
 Per process (private working set): WebView2 GPU process 72 MB, WebView2 browser 29 MB, renderer 19 MB, glassdock 14 MB, network service 7 MB, storage service 3 MB, crashpad 2 MB.
 
 Memory is already at the target before the glass renderer and the widgets exist, so it will go over unless something gives. The largest single item is the GPU process, and the dock window is a 2560×1062 px transparent surface at all times. The first thing to try in the performance pass is keeping the window at strip height while no popover is open and growing it only when one opens; that trades the "never resize" simplicity for a smaller idle surface. This is measured again at the end of every phase.
+
+## Working agreement (changed 2026-11-16)
+
+The plan had a stop after every phase for you to test. You asked for that to go: I verify each phase myself, including full-mode runs that really change the taskbar, and hand over a finished app with usage instructions. The "what to test" lists in PLAN.md are now my checklist, not yours.
+
+How I verify without touching your mouse or keyboard: `scripts/cdp.mjs` drives the page over the DevTools protocol (direct element clicks and in-page screenshots), `scripts/shellstate.ps1` reads taskbar, work area and journal state, `scripts/fullscreen-test.ps1` and `scripts/focus-test.ps1` exercise the fullscreen and popover-dismissal rules by activating windows, and `scripts/capture.ps1` grabs the composited screen.
+
+## Phase 1 follow-up: verified in full mode
+
+- Space reservation, top and bottom edge, pill and full width, both taskbar modes, "Restore taskbar" and resuming, and a clean `--quit` all behaved as designed; the taskbar state and work area were back to their originals afterwards.
+- Fixed: the dock did not hide for fullscreen windows. `GetForegroundWindow` can be null mid-switch; the check now uses the window named by the foreground event and retries when inconclusive. It also runs at startup and after every reposition, and `show` no longer un-hides a dock that is hidden for a fullscreen app.
+- Under `tauri dev` the watchdog is killed together with the dock (the dev tool and this harness run everything in one job object), so there the next start restores the taskbar from the leftover journal. Outside a job the watchdog survives; that case is still to be confirmed with an installed build.
+
+## Phase 2: liquid glass
+
+### Done
+
+- Backend: `IDesktopWallpaper` query (image, fit mode, background colour, per-monitor), fit-mode placement math for fill, fit, stretch, tile, center and span, WIC decoding and scaling, and compositing over the background colour. The backdrop is the whole monitor as Windows paints it, so the glass needs no re-read when the dock moves.
+- Change detection: `WM_SETTINGCHANGE` plus a watcher on the Windows themes folder, debounced, skipped when nothing relevant changed. Seen working live: this PC's ASUS OLED shifter swaps the wallpaper file every few minutes and each swap produced a new backdrop.
+- Frontend: a WebGL2 renderer with one fragment shader for all glass (rounded-rect distance fields merged with a smooth minimum). Edge refraction, chromatic fringing, frost, specular rim, inner rim line, edge glow, saturation and brightness lift, tint, soft shadow. Draws only on change; no loop at idle.
+- Spring-driven shapes: the dock's glass follows its size; popovers grow out of the tile they were opened from and merge with the dock on the way.
+- Popovers live in the dock window. The calendar (from the clock) and the right-click menu are the first two. They take focus while open; Esc, clicking the dock background, or activating another window closes them.
+- Six themes (Glass, iOS Glass, White, Black, Midnight, Graphite), light/dark following Windows with an override, user accent colour, five glass sliders in Settings with reset, and adaptive light or dark content chosen per surface from the wallpaper behind it.
+- Glass lab (dev builds, from the dock menu): twelve sliders and a tint picker, applied live, with "Copy as theme JSON".
+- Reduced motion: springs become jumps.
+
+### Verified
+
+- 60 Rust tests (17 new: placement math, compositing, wallpaper mapping) and 38 frontend tests (28 new: luminance grid, tone choice, themes, calendar, colour).
+- On screen in full mode: the glass refracts the real wallpaper at the bottom and the top edge, all six themes render with readable content, the calendar and menu open and dismiss correctly.
+
+### Bugs found and fixed while verifying
+
+- Red and blue were swapped in the backdrop: WIC's scaler returns BGRA even when RGBA is requested. It was invisible on near-neutral sand at the bottom of the wallpaper and obvious against blue sky at the top.
+- Popover text was hard to read on a busy wallpaper; popover glass now gets extra frost on top of the theme's.
+
+### Not done
+
+- The acrylic fallback from the plan is not implemented. When the wallpaper cannot be read, the glass falls back to a flat theme-coloured fill with the same highlights. The fallback path itself has not been exercised, because the wallpaper has always been readable here.
+- EXIF orientation of wallpapers is not applied.
+- Only the Fill fit mode has been seen on screen; the others are covered by unit tests only.
+- The drag between edges still snaps without a spring.
 
 ## Decisions
 

@@ -66,6 +66,7 @@ pub fn run(safe: bool) {
             commands::list_monitors,
             commands::app_info,
             commands::open_settings,
+            commands::open_glass_lab,
             commands::restore_taskbar,
             commands::reload_app,
             commands::quit_app,
@@ -191,16 +192,39 @@ pub fn run_action(app: &AppHandle, id: &str) {
 }
 
 pub fn open_settings(app: &AppHandle) -> AppResult<()> {
-    if let Some(window) = app.get_webview_window("settings") {
+    open_window(
+        app,
+        "settings",
+        "Glassdock Settings",
+        (880.0, 620.0),
+        (720.0, 480.0),
+    )
+}
+
+/// The glass tuning panel. Only reachable from dev builds' dock menu.
+pub fn open_glass_lab(app: &AppHandle) -> AppResult<()> {
+    open_window(app, "glasslab", "Glass lab", (380.0, 780.0), (320.0, 400.0))
+}
+
+/// Show an ordinary (non-dock) window, creating it on first use. These
+/// windows are destroyed when closed, so they cost nothing while unused.
+fn open_window(
+    app: &AppHandle,
+    label: &str,
+    title: &str,
+    size: (f64, f64),
+    min_size: (f64, f64),
+) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(label) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("index.html".into()))
-        .title("Glassdock Settings")
-        .inner_size(880.0, 620.0)
-        .min_inner_size(720.0, 480.0)
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+        .title(title)
+        .inner_size(size.0, size.1)
+        .min_inner_size(min_size.0, min_size.1)
         .center()
         .data_directory(paths::webview_dir())
         .build()?;
