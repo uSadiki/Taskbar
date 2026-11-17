@@ -90,6 +90,10 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
             appbar::window_pos_changed(hwnd);
             None
         }
+        WM_TIMER if wparam.0 == dock::FULLSCREEN_RECHECK_TIMER => {
+            dock::on_fullscreen_recheck();
+            Some(LRESULT(0))
+        }
         WM_TIMER if wparam.0 == dock::FULLSCREEN_RETRY_TIMER => {
             dock::on_fullscreen_retry();
             Some(LRESULT(0))

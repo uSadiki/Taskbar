@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::ThreadId;
 
+use tauri::window::{Effect, EffectsBuilder};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use windows::Win32::Foundation::CloseHandle;
@@ -50,6 +51,11 @@ pub fn run(safe: bool) {
             run_action(app, "settings");
         }))
         .plugin(log_plugin)
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name("Glassdock")
+                .build(),
+        )
         .manage(SettingsStore::load(paths::settings_path()))
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
@@ -169,6 +175,7 @@ fn setup(app: &AppHandle, safe: bool) -> AppResult<()> {
     crate::widgets::weather::start(app);
     crate::widgets::github::start(app);
     crate::widgets::claude::start(app);
+    crate::autostart::sync(app, app.state::<SettingsStore>().get().general.autostart);
     hooks::install();
     tray::create(app)?;
     log::info!(
@@ -261,6 +268,9 @@ fn open_window(
         .min_inner_size(min_size.0, min_size.1)
         .center()
         .data_directory(paths::webview_dir())
+        // Windows 11's Mica material behind the page, which is transparent.
+        .transparent(true)
+        .effects(EffectsBuilder::new().effect(Effect::Mica).build())
         .build()?;
     Ok(())
 }
@@ -282,6 +292,9 @@ pub fn settings_changed(app: &AppHandle, old: &Settings, new: &Settings) {
     }
     if old.weather != new.weather {
         crate::widgets::weather::refresh();
+    }
+    if old.general.autostart != new.general.autostart {
+        crate::autostart::sync(app, new.general.autostart);
     }
     if old.claude != new.claude {
         crate::widgets::claude::sync_bridge(new.claude.statusline_bridge);

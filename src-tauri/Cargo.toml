@@ -31,6 +31,7 @@ keyring = "4"
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "json", "query", "http2", "charset", "system-proxy"] }
 tokio = { version = "1", features = ["time", "sync", "macros"] }
+tauri-plugin-autostart = "2"
 
 # Same major/minor as the copy Tauri, tao and wry use, so HWND and friends are one type.
 [dependencies.windows]

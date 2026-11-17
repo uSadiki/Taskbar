@@ -27,7 +27,22 @@ export function batteryStatus(battery: BatteryState): string {
     : "On battery";
 }
 
-function Ring({ battery, size, stroke }: { battery: BatteryState; size: number; stroke: number }) {
+/**
+ * `pulse` animates the ring while charging. Only the popover uses it: any
+ * endless animation in the dock bar makes the whole dock window redraw every
+ * frame.
+ */
+function Ring({
+  battery,
+  size,
+  stroke,
+  pulse = false,
+}: {
+  battery: BatteryState;
+  size: number;
+  stroke: number;
+  pulse?: boolean;
+}) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const percent = battery.percent ?? 0;
@@ -42,7 +57,7 @@ function Ring({ battery, size, stroke }: { battery: BatteryState; size: number; 
         strokeWidth={stroke}
       />
       <circle
-        className={battery.charging ? "battery-charging" : undefined}
+        className={pulse && battery.charging ? "battery-charging" : undefined}
         cx={size / 2}
         cy={size / 2}
         r={radius}
@@ -95,7 +110,7 @@ export function BatteryPopover() {
     <div className="p-5">
       <div className="flex items-center gap-4">
         <div className="relative flex-none">
-          <Ring battery={battery} size={76} stroke={6} />
+          <Ring battery={battery} size={76} stroke={6} pulse />
           {battery.charging && (
             <Zap size={22} fill="currentColor" className="absolute inset-0 m-auto" aria-hidden />
           )}

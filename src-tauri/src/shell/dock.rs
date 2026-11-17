@@ -123,6 +123,7 @@ pub struct WindowOrigin {
 #[serde(rename_all = "camelCase")]
 pub struct AppInfo {
     pub version: String,
+    pub dev_build: bool,
     pub safe_mode: bool,
     pub taskbar_suspended: bool,
     pub log_dir: String,
@@ -131,6 +132,8 @@ pub struct AppInfo {
 
 /// Timer id for re-checking fullscreen state after an inconclusive check.
 pub const FULLSCREEN_RETRY_TIMER: usize = 0x4653;
+/// Timer id for re-checking while hidden for a fullscreen app.
+pub const FULLSCREEN_RECHECK_TIMER: usize = 0x4654;
 static FULLSCREEN_RETRIES: AtomicU32 = AtomicU32::new(0);
 
 static RUNTIME: OnceLock<DockRuntime> = OnceLock::new();
@@ -514,6 +517,7 @@ pub fn app_info() -> AppInfo {
         .unwrap_or((false, false));
     AppInfo {
         version: env!("CARGO_PKG_VERSION").into(),
+        dev_build: cfg!(debug_assertions),
         safe_mode,
         taskbar_suspended,
         log_dir: paths::log_dir().display().to_string(),
@@ -573,12 +577,43 @@ pub fn evaluate_fullscreen(candidate: Option<HWND>) {
     }
     log::info!("dock: fullscreen app in foreground: {fullscreen}");
     if fullscreen {
+        set_rendering(rt, false);
         unsafe {
             let _ = ShowWindow(rt.hwnd(), SW_HIDE);
+            // Leaving fullscreen often doesn't change the foreground window
+            // (Esc in a browser or video player), so check again now and
+            // then while hidden. Nothing runs while the dock is visible.
+            SetTimer(Some(rt.hwnd()), FULLSCREEN_RECHECK_TIMER, 1500, None);
         }
     } else {
+        unsafe {
+            let _ = KillTimer(Some(rt.hwnd()), FULLSCREEN_RECHECK_TIMER);
+        }
+        set_rendering(rt, true);
         show();
     }
+}
+
+/// Tell WebView2 whether the page is on screen. Hiding the window alone
+/// doesn't stop the page from rendering; this does, so a dock hidden for a
+/// fullscreen game or video costs nothing.
+fn set_rendering(rt: &DockRuntime, visible: bool) {
+    let Some(window) = rt.app.get_webview_window("dock") else {
+        return;
+    };
+    let result = window.with_webview(move |webview| unsafe {
+        if let Err(e) = webview.controller().SetIsVisible(visible) {
+            log::warn!("dock: could not change page visibility: {e}");
+        }
+    });
+    if let Err(e) = result {
+        log::warn!("dock: could not reach the page: {e}");
+    }
+}
+
+/// The re-check timer set while the dock is hidden for a fullscreen app.
+pub fn on_fullscreen_recheck() {
+    evaluate_fullscreen(None);
 }
 
 pub fn on_foreground_changed(foreground: HWND) {

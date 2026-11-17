@@ -6,7 +6,7 @@ pub mod usage;
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -50,6 +50,9 @@ pub struct ClaudeState {
 struct FileCache {
     modified: SystemTime,
     len: u64,
+    /// Bytes read so far, up to the end of the last complete line. Claude
+    /// Code only appends, so the next read starts here.
+    offset: u64,
     entries: Vec<UsageEntry>,
 }
 
@@ -103,16 +106,38 @@ fn log_files(dir: &Path, cutoff: SystemTime) -> Vec<(PathBuf, SystemTime, u64)> 
     out
 }
 
-fn read_file(path: &Path, since: i64) -> Vec<UsageEntry> {
-    let Ok(file) = File::open(path) else {
-        return Vec::new();
+/// Read complete lines from `offset` on. Returns the entries and the offset
+/// just past the last complete line; a line still being written is left for
+/// the next read.
+fn read_from(path: &Path, offset: u64, since: i64) -> (Vec<UsageEntry>, u64) {
+    let Ok(mut file) = File::open(path) else {
+        return (Vec::new(), offset);
     };
-    BufReader::new(file)
-        .lines()
-        .map_while(Result::ok)
-        .filter_map(|line| usage::parse_line(&line))
-        .filter(|e| e.ts >= since)
-        .collect()
+    if file.seek(SeekFrom::Start(offset)).is_err() {
+        return (Vec::new(), offset);
+    }
+    let mut reader = BufReader::new(file);
+    let mut entries = Vec::new();
+    let mut consumed = offset;
+    let mut line = String::new();
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                if !line.ends_with('\n') {
+                    break;
+                }
+                consumed += n as u64;
+                if let Some(entry) = usage::parse_line(line.trim_end())
+                    && entry.ts >= since
+                {
+                    entries.push(entry);
+                }
+            }
+        }
+    }
+    (entries, consumed)
 }
 
 fn compute(entries: &[UsageEntry], limits: Option<Limits>, now: i64) -> ClaudeState {
@@ -161,16 +186,31 @@ fn refresh() {
                 .files
                 .get(path)
                 .is_some_and(|c| c.modified == *modified && c.len == *len);
-            if !fresh {
-                let entries = read_file(path, since);
-                inner.files.insert(
-                    path.clone(),
-                    FileCache {
-                        modified: *modified,
-                        len: *len,
-                        entries,
-                    },
-                );
+            if fresh {
+                continue;
+            }
+            match inner.files.get_mut(path) {
+                // Grown: read only what was appended.
+                Some(cache) if *len >= cache.len => {
+                    let (more, offset) = read_from(path, cache.offset, since);
+                    cache.entries.extend(more);
+                    cache.offset = offset;
+                    cache.modified = *modified;
+                    cache.len = *len;
+                }
+                // New, or rewritten from scratch.
+                _ => {
+                    let (entries, offset) = read_from(path, 0, since);
+                    inner.files.insert(
+                        path.clone(),
+                        FileCache {
+                            modified: *modified,
+                            len: *len,
+                            offset,
+                            entries,
+                        },
+                    );
+                }
             }
         }
         usage::dedupe(
@@ -341,4 +381,56 @@ pub fn start(app: &AppHandle) {
             tokio::time::sleep(Duration::from_secs(5 * 60)).await;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn line(id: &str, ts: &str) -> String {
+        format!(
+            r#"{{"type":"assistant","timestamp":"{ts}","requestId":"r{id}","message":{{"id":"{id}","model":"claude-opus-5-5","usage":{{"input_tokens":1,"output_tokens":2}}}}}}"#
+        )
+    }
+
+    #[test]
+    fn reads_only_appended_complete_lines() {
+        let dir = std::env::temp_dir().join(format!("glassdock-claude-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("session.jsonl");
+        let mut file = File::create(&path).unwrap();
+        writeln!(file, "{}", line("a", "2026-11-17T10:00:00Z")).unwrap();
+        write!(file, "{}", &line("b", "2026-11-17T10:01:00Z")[..40]).unwrap();
+        file.flush().unwrap();
+
+        let (first, offset) = read_from(&path, 0, 0);
+        assert_eq!(
+            first.len(),
+            1,
+            "the half-written second line is left for later"
+        );
+
+        // Finish the second line and add a third.
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&path)
+            .unwrap();
+        writeln!(file, "{}", line("a", "2026-11-17T10:00:00Z")).unwrap();
+        writeln!(file, "{}", line("b", "2026-11-17T10:01:00Z")).unwrap();
+        writeln!(file, "{}", line("c", "2026-11-17T10:02:00Z")).unwrap();
+        file.flush().unwrap();
+
+        let (more, end) = read_from(&path, offset, 0);
+        assert_eq!(
+            more.iter().map(|e| e.key.as_str()).collect::<Vec<_>>(),
+            ["b:rb", "c:rc"]
+        );
+        assert_eq!(end, std::fs::metadata(&path).unwrap().len());
+        let (nothing, same) = read_from(&path, end, 0);
+        assert!(nothing.is_empty());
+        assert_eq!(same, end);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

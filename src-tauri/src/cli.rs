@@ -12,6 +12,9 @@ pub enum Mode {
     /// Claude Code's status line command: read its JSON on stdin, save the
     /// usage limits, print a status line.
     Statusline,
+    /// Run by the uninstaller: undo everything Glassdock changed outside its
+    /// own folders, then exit.
+    UninstallCleanup,
     /// Start a detached watchdog for the given process id and exit.
     WatchdogLauncher(u32),
     /// Wait for the given process to exit, then restore the taskbar if needed.
@@ -27,6 +30,7 @@ pub fn parse(args: &[String], env_safe: bool) -> Mode {
             "--restore" => return Mode::Restore,
             "--quit" => return Mode::Quit,
             "--statusline" => return Mode::Statusline,
+            "--uninstall-cleanup" => return Mode::UninstallCleanup,
             "--watchdog-launcher" => {
                 if let Some(pid) = iter.next().and_then(|v| v.parse().ok()) {
                     return Mode::WatchdogLauncher(pid);

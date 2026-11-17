@@ -31,7 +31,8 @@ export function WeatherTile({ size }: { size: number }) {
       aria-expanded={open}
       onClick={(e) => toggle("weather", anchorOf(e.currentTarget))}
     >
-      <WeatherIcon sky={sky} day={forecast.current.isDay} size={size - 12} />
+      {/* Still in the dock bar; the popover's icons move. */}
+      <WeatherIcon sky={sky} day={forecast.current.isDay} size={size - 12} animate={false} />
       <span className="text-[14px] font-semibold tabular-nums">{degrees(forecast.current.temperature)}</span>
     </button>
   );

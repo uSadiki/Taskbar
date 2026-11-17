@@ -179,6 +179,8 @@ export interface MonitorInfo {
 
 export interface AppInfo {
   version: string;
+  /** A development build: autostart and the Claude bridge don't register. */
+  devBuild: boolean;
   safeMode: boolean;
   taskbarSuspended: boolean;
   logDir: string;

@@ -154,8 +154,15 @@ function General({ settings, info, update }: { settings: Settings; info: AppInfo
       </Section>
 
       <Section title="Startup">
-        <Row label="Start at login" description="Arrives with the installer in phase 6.">
-          <Toggle label="Start at login" checked={general.autostart} disabled onChange={() => {}} />
+        <Row
+          label="Start at login"
+          description={info?.devBuild ? "Applies to the installed app; development builds don't register themselves." : undefined}
+        >
+          <Toggle
+            label="Start at login"
+            checked={general.autostart}
+            onChange={(autostart) => update({ general: { autostart } })}
+          />
         </Row>
       </Section>
     </>

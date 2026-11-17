@@ -55,10 +55,31 @@ html[data-window="dock"] body {
   cursor: default;
 }
 
+/* Ordinary windows sit on Mica: the page is see-through and its surfaces
+   are translucent, so the material shows at the edges. */
+html[data-window="settings"],
+html[data-window="glasslab"] {
+  --surface: rgb(243 244 247 / 0.55);
+  --surface-raised: rgb(255 255 255 / 0.72);
+  --surface-sunken: rgb(0 0 0 / 0.06);
+}
+
+html[data-window="settings"][data-scheme="dark"],
+html[data-window="glasslab"][data-scheme="dark"] {
+  --surface: rgb(27 29 35 / 0.5);
+  --surface-raised: rgb(255 255 255 / 0.06);
+  --surface-sunken: rgb(0 0 0 / 0.25);
+}
+
 html[data-window="settings"] body,
 html[data-window="glasslab"] body {
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
+}
+
+html[data-window="settings"] main,
+html[data-window="glasslab"] #root {
+  background: var(--surface);
 }
 
 /* ---- Content on glass ------------------------------------------------------
@@ -287,9 +308,11 @@ html[data-window="glasslab"] body {
   background: transparent;
 }
 
-/* Text too long for its tile slides to its end and back. */
-.marquee {
-  animation: marquee 9s ease-in-out infinite alternate;
+/* Text too long for its tile slides to its end and back while the pointer
+   is over the tile. Never endlessly: an animation in the dock bar makes the
+   whole dock window redraw every frame. */
+.dock-chip:hover .marquee {
+  animation: marquee 6s ease-in-out infinite alternate;
 }
 
 @keyframes marquee {
