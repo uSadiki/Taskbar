@@ -66,16 +66,34 @@ pub fn forget_registration() {
 }
 
 /// Ask for a strip `thickness` pixels deep along `edge` of `monitor` and return
-/// the strip the system granted. The system may push it inward if another
+/// the strip the dock should occupy. The system may push it inward if another
 /// appbar or a non-hidden taskbar is on the same edge.
-pub fn set_pos(hwnd: HWND, edge: Edge, monitor: Rect, thickness: i32) -> Rect {
+///
+/// With `reserve` false the dock still takes its place among the appbars on
+/// that edge, but claims no depth, so maximized windows reach the edge.
+pub fn set_pos(hwnd: HWND, edge: Edge, monitor: Rect, thickness: i32, reserve: bool) -> Rect {
     let mut abd = data(hwnd);
     abd.uEdge = edge_code(edge);
     abd.rc = proposed_rect(edge, monitor, thickness).into();
     unsafe { SHAppBarMessage(ABM_QUERYPOS, &mut abd) };
-    abd.rc = finalize_rect(edge, abd.rc.into(), thickness).into();
+    let band = finalize_rect(edge, abd.rc.into(), thickness);
+    abd.rc = if reserve {
+        band
+    } else {
+        claimed_rect(edge, band)
+    }
+    .into();
     unsafe { SHAppBarMessage(ABM_SETPOS, &mut abd) };
-    abd.rc.into()
+    if reserve { abd.rc.into() } else { band }
+}
+
+/// The zero-depth strip at the outer side of `band`: a place on the edge
+/// that takes nothing from the work area.
+pub fn claimed_rect(edge: Edge, band: Rect) -> Rect {
+    match edge {
+        Edge::Bottom => Rect::new(band.left, band.bottom, band.right, band.bottom),
+        Edge::Top => Rect::new(band.left, band.top, band.right, band.top),
+    }
 }
 
 /// The dock must forward these two window messages so the shell keeps the
@@ -178,6 +196,16 @@ mod tests {
             finalize_rect(Edge::Top, queried, 102),
             Rect::new(0, 40, 2560, 142)
         );
+    }
+
+    #[test]
+    fn claiming_without_reserving_takes_no_depth() {
+        let band = proposed_rect(Edge::Bottom, MONITOR, 102);
+        let claimed = claimed_rect(Edge::Bottom, band);
+        assert_eq!(claimed, Rect::new(0, 1600, 2560, 1600));
+        assert_eq!(claimed.height(), 0);
+        let band = proposed_rect(Edge::Top, MONITOR, 102);
+        assert_eq!(claimed_rect(Edge::Top, band), Rect::new(0, 0, 2560, 0));
     }
 
     #[test]

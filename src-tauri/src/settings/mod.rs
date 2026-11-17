@@ -83,7 +83,7 @@ pub enum ColorScheme {
     Dark,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct General {
     pub autostart: bool,
@@ -93,6 +93,24 @@ pub struct General {
     /// Device name of the monitor the dock lives on (for example `\\.\DISPLAY1`).
     /// `None` means the primary monitor.
     pub monitor: Option<String>,
+    /// Get out of the way of windows: reserve no screen space, slide away
+    /// while a window (a maximized one, typically) overlaps the dock, and come
+    /// back when the pointer is pushed against the screen edge. Off means the
+    /// dock reserves its strip and maximized windows stop above it.
+    pub hide_for_windows: bool,
+}
+
+impl Default for General {
+    fn default() -> Self {
+        Self {
+            autostart: false,
+            taskbar_mode: TaskbarMode::default(),
+            position: Edge::default(),
+            layout: DockLayoutKind::default(),
+            monitor: None,
+            hide_for_windows: true,
+        }
+    }
 }
 
 /// The user's adjustments to the current theme's glass. `None` keeps the
@@ -450,6 +468,8 @@ mod tests {
         assert_eq!(settings.general.layout, DockLayoutKind::Pill);
         assert_eq!(settings.appearance.theme, "glass");
         assert_eq!(settings.version, SETTINGS_VERSION);
+        // Settings files written before the option existed turn it on.
+        assert!(settings.general.hide_for_windows);
     }
 
     #[test]

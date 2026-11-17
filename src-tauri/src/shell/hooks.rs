@@ -7,7 +7,7 @@ use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWi
 use windows::Win32::UI::WindowsAndMessaging::{
     EVENT_OBJECT_CLOAKED, EVENT_OBJECT_CREATE, EVENT_OBJECT_HIDE, EVENT_OBJECT_NAMECHANGE,
     EVENT_OBJECT_SHOW, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND,
-    EVENT_SYSTEM_MINIMIZESTART, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
+    EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MOVESIZEEND, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
 };
 
 use super::{dock, guard, taskbar};
@@ -21,6 +21,8 @@ static HOOKS: Mutex<Vec<isize>> = Mutex::new(Vec::new());
 const RANGES: &[(u32, u32)] = &[
     // Foreground changes: fullscreen detection and the active-app highlight.
     (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND),
+    // A window was dragged or resized: it may now overlap the dock.
+    (EVENT_SYSTEM_MOVESIZEEND, EVENT_SYSTEM_MOVESIZEEND),
     (EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND),
     // Windows appearing and disappearing (create, destroy, show, hide).
     (EVENT_OBJECT_CREATE, EVENT_OBJECT_HIDE),
@@ -78,7 +80,13 @@ unsafe extern "system" fn callback(
     guard::run("a WinEvent callback", || match event {
         EVENT_SYSTEM_FOREGROUND => {
             dock::on_foreground_changed(hwnd);
+            dock::on_windows_rearranged();
             apps::on_window_event(hwnd, false);
+        }
+        EVENT_SYSTEM_MOVESIZEEND => dock::on_windows_rearranged(),
+        EVENT_SYSTEM_MINIMIZESTART | EVENT_SYSTEM_MINIMIZEEND => {
+            dock::on_windows_rearranged();
+            apps::on_window_event(hwnd, true);
         }
         EVENT_OBJECT_SHOW => {
             taskbar::on_window_shown(hwnd);

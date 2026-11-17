@@ -2,6 +2,7 @@
 //! registration, the taskbar, and the machinery that undoes all of it.
 
 pub mod appbar;
+pub mod cover;
 pub mod dock;
 pub mod fullscreen;
 pub mod guard;

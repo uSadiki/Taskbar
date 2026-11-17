@@ -30,6 +30,8 @@ export interface Settings {
     layout: DockLayoutKind;
     /** Monitor device name; null means the primary monitor. */
     monitor: string | null;
+    /** Slide away while a window overlaps the dock, instead of reserving space. */
+    hideForWindows: boolean;
   };
   appearance: {
     theme: string;

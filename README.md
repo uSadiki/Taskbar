@@ -21,8 +21,11 @@ To remove Glassdock, use Settings > Apps > Installed apps. Uninstalling restores
 | See details for a widget | Click it. Click again, press Esc or click anywhere else to close. |
 | Open Settings, restore the taskbar, reload or quit | Right-click an empty part of the dock (or use the tray icon, when the taskbar is visible). |
 | Move the dock to the top or bottom | Drag it to the other edge. |
+| Bring the dock back while a window covers it | Push the pointer against the screen edge, below the dock. It slides away again when the pointer leaves. |
 
-The Windows taskbar is set to auto-hide while Glassdock runs (or hidden completely, if you choose that in Settings). Quitting Glassdock, or Glassdock crashing, puts it back the way it was.
+The dock takes no screen space of its own: maximized windows fill the whole screen, and the dock slides away while a window overlaps it. To have it keep its own strip instead (maximized windows then stop above it), turn off Hide for windows in Settings > General.
+
+The Windows taskbar is set to auto-hide while Glassdock runs (or hidden completely, if you choose that in Settings). With the dock at the bottom, Hide completely works best, because the auto-hidden taskbar also comes up at that edge. Quitting Glassdock, or Glassdock crashing, puts it back the way it was.
 
 ## Setting up the widgets
 

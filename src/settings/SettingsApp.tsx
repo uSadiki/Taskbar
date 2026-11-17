@@ -114,6 +114,29 @@ function General({ settings, info, update }: { settings: Settings; info: AppInfo
       </Section>
 
       <Section title="Dock">
+        <Row
+          label="Hide for windows"
+          description={
+            general.hideForWindows
+              ? "The dock slides away while a window overlaps it, such as a maximized app. Push the pointer against the screen edge to bring it back."
+              : "The dock keeps its own strip of the screen, and maximized windows stop above it."
+          }
+        >
+          <Toggle
+            label="Hide for windows"
+            checked={general.hideForWindows}
+            onChange={(hideForWindows) => update({ general: { hideForWindows } })}
+          />
+        </Row>
+        {general.hideForWindows &&
+          general.taskbarMode === "autoHide" &&
+          general.position === "bottom" &&
+          !info?.safeMode && (
+          <Notice>
+            The auto-hidden Windows taskbar also comes up when you push the pointer against the screen
+            edge. Choose Hide completely above so only the dock does.
+          </Notice>
+        )}
         <Row label="Position" description="You can also drag the dock to the other edge.">
           <Segmented
             label="Position"

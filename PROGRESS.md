@@ -239,6 +239,25 @@ Not measured: idle with the dock visible on the final build, because a fullscree
 - Memory is above the 150 MB target. The largest part is the WebView2 GPU process, and the dock window is a 2560x1062 transparent surface at all times. The next step would be to keep the window at strip height until a popover or toast opens.
 - GitHub with a real token, a real 80% alert, Spotify, and switching radios, audio device or light/dark mode to a different state were not exercised (see the phase sections).
 - Weather has no city set; choose one in Settings > Widgets.
+
+## After release: feedback fixes (2026-11-17)
+
+### Done
+
+- No outer shadow around the dock: the themes set it to zero, and the shader skips the shadow pass unless the glass lab turns it on.
+- **Hide for windows** (Settings > General, on by default). The dock keeps its AppBar registration but claims a zero-depth strip, so maximized windows fill the screen instead of stopping above a strip of wallpaper. While an app window overlaps the dock bar, the dock slides off the edge (180 ms) and hides, with page rendering off. Resting the pointer on the last pixel row level with the bar for 120 ms brings it back over the app (160 ms). It stays while the pointer is on it or a popover, menu or alert is open, and leaves 500 ms after the pointer does. An alert also brings it up. Turning the option off restores the reserved strip.
+  - Which windows count: visible, not minimized or cloaked, not Glassdock's own, not tool, no-activate or click-through windows, not shell surfaces, at least 64 px each way, overlapping the bar by 2 px or more (DWM visible bounds, not the window rect with its invisible border).
+  - Checks: every 250 ms while nothing covers the dock, plus 30 ms after a foreground change, minimize or restore, or the end of a window move. While covered, the pointer is checked every 40 ms and windows every 240 ms. Once a second behind a fullscreen app. Maximizing has no cheap event (location changes fire on every mouse move), so it is picked up by the 250 ms check.
+  - Fullscreen detection now treats a maximized window with a caption or sizing border as not fullscreen, since without the reserved strip it covers the whole monitor too.
+- Apps magnification: the pointer was measured from the start of the apps row but each icon from the dock's full-width strip, so hovering the right end of the row enlarged Discord and Spotify. Both are now measured in window coordinates.
+
+### Verified on this PC, with the installed release build
+
+- With the Claude app maximized, the dock slid away and the app reached the bottom of the screen. The pointer at the bottom edge brought the dock up over the app; moving away slid it off again.
+- With Chrome and VS Code maximized behind a smaller window, the dock stayed hidden. VS Code's visible bounds became 0,0-2560,1600 (were 0,0-2560,1486).
+- Magnification with injected pointer events: over the last icon only it and its neighbour grow (1.22 and 1.06); over the first icon only Discord and Spotify do.
+- 152 backend and 57 frontend tests pass; clippy clean.
+
 ## Decisions
 
 | Date | Decision |
@@ -251,6 +270,7 @@ Not measured: idle with the dock visible on the final build, because a fullscree
 | 2026-11-16 | Release builds unwind on panic (no `panic = "abort"`), so a panic in a worker or a Windows callback is contained instead of ending the process. |
 | 2026-11-16 | "Restore taskbar" restores the taskbar and pauses taskbar management until Reload or until a taskbar mode is picked in Settings. The dock stays registered and sits above the taskbar. |
 | 2026-11-16 | The watchdog is started through a short-lived launcher process so it is not part of the dock's process tree and survives a tree kill. |
+| 2026-11-17 | The dock hides for maximized and other overlapping windows instead of reserving a strip (user's choice over "fill the strip" and "always float over apps"). Reveal is by pushing the pointer to the edge. The reserved strip remains as an option. |
 
 ## Known issues and open points
 

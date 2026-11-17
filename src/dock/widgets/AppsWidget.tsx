@@ -22,7 +22,7 @@ interface AppIconProps {
   group: AppGroup;
   size: number;
   edge: Edge;
-  /** Pointer x relative to the widget, or Infinity when the pointer is elsewhere. */
+  /** Pointer x in window coordinates, or Infinity when the pointer is elsewhere. */
   pointerX: MotionValue<number>;
   magnify: boolean;
 }
@@ -35,11 +35,14 @@ function AppIcon({ group, size, edge, pointerX, magnify }: AppIconProps) {
 
   useEffect(() => ensureIcon(group.id), [group.id]);
 
-  // Grow toward the pointer, like a row of icons under a lens.
+  // Grow toward the pointer, like a row of icons under a lens. The pointer
+  // and the icon are both measured in window coordinates (`offsetLeft` would
+  // be relative to the dock's full-width strip, not to this row).
   const target = useTransform(pointerX, (x) => {
     const el = ref.current;
     if (!magnify || !el || !Number.isFinite(x)) return 1;
-    const distance = Math.abs(x - (el.offsetLeft + el.offsetWidth / 2));
+    const box = el.getBoundingClientRect();
+    const distance = Math.abs(x - (box.left + box.width / 2));
     const closeness = Math.max(0, 1 - distance / REACH);
     return 1 + (MAGNIFY - 1) * closeness * closeness;
   });
@@ -122,7 +125,7 @@ export function AppsWidget({ size, edge }: { size: number; edge: Edge }) {
       className="apps-widget"
       role="toolbar"
       aria-label="Apps"
-      onPointerMove={(e) => pointerX.set(e.clientX - e.currentTarget.getBoundingClientRect().left)}
+      onPointerMove={(e) => pointerX.set(e.clientX)}
       onPointerLeave={() => pointerX.set(Infinity)}
     >
       {groups.map((group) => (

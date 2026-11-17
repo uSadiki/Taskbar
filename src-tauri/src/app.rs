@@ -282,10 +282,12 @@ pub fn settings_changed(app: &AppHandle, old: &Settings, new: &Settings) {
     if old.general.taskbar_mode != new.general.taskbar_mode {
         dock::resume_taskbar();
     }
-    // Edge, monitor, size and layout all change the strip the dock reserves.
+    // Edge, monitor, size, layout and hiding for windows all change the
+    // strip the dock reserves.
     let moved = old.general.position != new.general.position
         || old.general.monitor != new.general.monitor
         || old.general.layout != new.general.layout
+        || old.general.hide_for_windows != new.general.hide_for_windows
         || old.appearance.dock_size != new.appearance.dock_size;
     if moved {
         dock::reposition();

@@ -3,7 +3,10 @@
 
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Shell::{QUNS_RUNNING_D3D_FULL_SCREEN, SHQueryUserNotificationState};
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsWindowVisible};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GWL_STYLE, GetForegroundWindow, GetWindowLongPtrW, IsWindowVisible, IsZoomed, WS_CAPTION,
+    WS_THICKFRAME,
+};
 
 use super::win::{class_name, window_rect};
 use crate::geometry::Rect;
@@ -30,10 +33,16 @@ pub fn is_shell_class(class: &str) -> bool {
 }
 
 /// A window is fullscreen on a monitor when it covers every pixel of it.
-/// A maximized window never does while the dock is registered as an appbar,
-/// because it stops at the dock's reserved strip.
+/// A maximized window never does while the dock reserves its strip, because
+/// it stops there; without the strip, `is_framed_maximized` tells them apart.
 pub fn covers_monitor(window: Rect, monitor: Rect) -> bool {
     window.contains_rect(&monitor)
+}
+
+/// A maximized window with a title bar or a sizing border: an ordinary app
+/// filling the screen, not a fullscreen one.
+pub fn is_framed_maximized(zoomed: bool, style: u32) -> bool {
+    zoomed && (style & WS_CAPTION.0 == WS_CAPTION.0 || style & WS_THICKFRAME.0 != 0)
 }
 
 /// `Some(true)` if the foreground window is a fullscreen app on `monitor`,
@@ -61,6 +70,13 @@ pub fn foreground_is_fullscreen(
     }
     if !unsafe { IsWindowVisible(foreground) }.as_bool() || is_shell_class(&class_name(foreground))
     {
+        return Some(false);
+    }
+    // When the dock reserves no space, a maximized window covers the whole
+    // monitor too. It still has its frame, which a fullscreen window drops
+    // (browsers and players also leave the maximized state for fullscreen).
+    let style = unsafe { GetWindowLongPtrW(foreground, GWL_STYLE) } as u32;
+    if is_framed_maximized(unsafe { IsZoomed(foreground) }.as_bool(), style) {
         return Some(false);
     }
     if window_rect(foreground).is_some_and(|rect| covers_monitor(rect, monitor)) {
@@ -92,6 +108,18 @@ mod tests {
         assert!(!covers_monitor(Rect::new(0, 0, 2560, 1498), MONITOR));
         // Standard maximized overhang on the sides still stops at the dock.
         assert!(!covers_monitor(Rect::new(-11, -11, 2571, 1498), MONITOR));
+    }
+
+    #[test]
+    fn maximized_apps_are_not_fullscreen() {
+        // VS Code and Chrome maximized: caption, sizing border, maximize bit.
+        assert!(is_framed_maximized(true, 0x15C7_0000));
+        // The same window restored.
+        assert!(!is_framed_maximized(false, 0x14C7_0000));
+        // A browser in fullscreen drops the caption and sizing border.
+        assert!(!is_framed_maximized(true, 0x1600_0000));
+        // A borderless game window.
+        assert!(!is_framed_maximized(false, 0x9600_0000));
     }
 
     #[test]

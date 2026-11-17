@@ -98,6 +98,18 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
             dock::on_fullscreen_retry();
             Some(LRESULT(0))
         }
+        WM_TIMER if wparam.0 == dock::AUTO_HIDE_TIMER => {
+            dock::on_auto_hide_timer();
+            Some(LRESULT(0))
+        }
+        WM_TIMER if wparam.0 == dock::SLIDE_TIMER => {
+            dock::on_slide_timer();
+            Some(LRESULT(0))
+        }
+        WM_TIMER if wparam.0 == dock::COVER_CHECK_TIMER => {
+            dock::on_cover_check_timer();
+            Some(LRESULT(0))
+        }
         // Battery level, power source or battery saver changed.
         WM_POWERBROADCAST => {
             if let Some(rt) = dock::runtime() {
