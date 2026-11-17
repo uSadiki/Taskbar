@@ -11,8 +11,29 @@ The plan is in [PLAN.md](PLAN.md). This file records what is done, what was deci
 | 2. Liquid glass | Done 2026-11-17 |
 | 3. Apps widget | Done 2026-11-17 |
 | 4. Now Playing, Battery Ring, Quick Toggles | Done 2026-11-17 |
-| 5. Weather, GitHub Activity, Claude Usage | Not started |
+| 5. Weather, GitHub Activity, Claude Usage | Started: weather backend written, not wired in |
 | 6. Polish and release | Not started |
+
+## Where to resume (written 2026-11-17, end of session)
+
+Phases 0 to 4 are done and committed. Phase 5 is started but not wired in. Nothing is running; the taskbar is in its normal state.
+
+**In the tree but not compiled yet** (not declared in `lib.rs` / `widgets/mod.rs`):
+
+- `src-tauri/src/net.rs`: shared `reqwest` client, error wording, JSON disk cache under `%LOCALAPPDATA%\Glassdock\cache`.
+- `src-tauri/src/widgets/weather.rs`: Open-Meteo forecast and geocoding parsing with tests, `ipwho.is` auto-detect, 30-minute refresh loop, state and `weather://changed` event. It expects `crate::settings::WeatherLocation { name, latitude, longitude }` and a `weather: WeatherSettings { location: Option<WeatherLocation>, fahrenheit: bool }` field on `Settings`; neither exists yet.
+- `Cargo.toml` already has `reqwest` 0.13 (native-tls, so no extra build tools), `tokio`, `chrono` and `keyring` 4. They have not been compiled yet.
+
+**Next steps, in order:**
+
+1. Add `WeatherSettings` and `ClaudeSettings { statusline_bridge: bool (default true) }` to `settings/mod.rs` and the TypeScript `Settings` type; declare `mod net;` and `pub mod weather;`; add commands `weather_state`, `weather_search`, `weather_locate`, `weather_refresh`; call `weather::start` in `app.rs` and `weather::refresh()` from `settings_changed` when the weather settings change.
+2. Weather UI: tile (icon and temperature), popover (current conditions, next 24 hours, 7 days), animated SVG icons mapped from WMO codes, and the city search in Settings > Widgets.
+3. GitHub Activity (`widgets/github.rs`): token in Credential Manager via `keyring::Entry::new("Glassdock", "github-token")` (use `entry.inner` for `set_password` / `get_password` / `delete_credential`); one GraphQL request for `viewer.contributionsCollection.contributionCalendar` plus two `search` queries (open PRs by `author:@me`, `review-requested:@me`) and `rateLimit`; REST `/users/{login}/events`; streak maths as pure tested functions; states for no token, invalid token (401), rate limited, offline with cached data; refresh every 15 minutes and on demand.
+4. Claude Usage (`widgets/claude/`): a `--statusline` CLI mode that reads Claude Code's status-line JSON on stdin, writes `rate_limits.five_hour` / `seven_day` to `%LOCALAPPDATA%\Glassdock\claude-status.json` and prints a short status line; installing and removing the `statusLine` entry in `~/.claude/settings.json` (never overwrite an existing one; skip auto-install in debug builds so dev runs don't point Claude Code at `target\debug`); parsing `~/.claude/projects/**/*.jsonl` (assistant entries, `message.usage`, dedupe by `message.id` + `requestId`) into per-day and per-model totals, 5-hour blocks, burn rate and an estimated cost from a price table; toasts at 80% and 95%, once per window, held while Quiet is on.
+5. Toast surface in the dock (a glass shape above the dock, auto-dismiss).
+6. Phase 6: quiet-hours schedule, autostart (`tauri-plugin-autostart`), NSIS installer with `--quit` before upgrade and `--restore` on uninstall, a tightened CSP, the Mica or glass styling for Settings, the idle CPU and memory pass (the window-size idea under Measurements), confirming the watchdog outside a job object with an installed build, and the final usage instructions for the user.
+
+**How I test** (see "Working agreement" below): start with `$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=9222'; npm run tauri dev`, drive the page with `scripts/cdp.mjs` (use `element.click()` through `eval`, not injected mouse presses, which mix with real mouse movement and get read as drags), read state with `scripts/shellstate.ps1`, capture with `scripts/popover-shots.ps1`. Always finish with `src-tauri\target\debug\glassdock.exe --quit` and check `shellstate.ps1` shows `state=0` and no journal. In this harness `cargo` needs `$env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"` first.
 
 ## How to run
 
