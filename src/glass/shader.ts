@@ -121,10 +121,13 @@ void main() {
   float d = scene(p);
   float inside = clamp(0.5 - d, 0.0, 1.0);   // one pixel of antialiasing
 
-  // Soft shadow, cast slightly downward, only outside the glass.
-  float ds = scene(p - vec2(0.0, 4.0 * uScale));
-  float shadow = uShadow * 0.42 * exp(-max(ds, 0.0) / (10.0 * uScale));
-  shadow *= 1.0 - inside;
+  // Optional soft shadow, cast slightly downward, only outside the glass.
+  // The themes set it to zero; only the glass lab can turn it on.
+  float shadow = 0.0;
+  if (uShadow > 0.0) {
+    float ds = scene(p - vec2(0.0, 4.0 * uScale));
+    shadow = uShadow * 0.42 * exp(-max(ds, 0.0) / (10.0 * uScale)) * (1.0 - inside);
+  }
 
   if (inside <= 0.0) {
     fragColor = vec4(0.0, 0.0, 0.0, shadow);

@@ -26,7 +26,8 @@ const CLEAR: GlassParams = {
   tint: [0.05, 0.06, 0.09],
   tintStrength: 0.16,
   opacity: 0,
-  shadow: 0.7,
+  // No outer shadow: the glass ends at its rim.
+  shadow: 0,
 };
 
 const FROSTED: GlassParams = {
@@ -43,7 +44,7 @@ const FROSTED: GlassParams = {
   tintStrength: 0.3,
 };
 
-const solid = (tint: [number, number, number], shadow: number): GlassParams => ({
+const solid = (tint: [number, number, number]): GlassParams => ({
   ...CLEAR,
   refraction: 0,
   chroma: 0,
@@ -53,7 +54,6 @@ const solid = (tint: [number, number, number], shadow: number): GlassParams => (
   fresnel: 0.05,
   tint,
   opacity: 1,
-  shadow,
 });
 
 const tinted = (tint: [number, number, number], overrides: Partial<GlassParams>): GlassParams => ({
@@ -89,14 +89,14 @@ export const THEMES: Theme[] = [
     id: "white",
     name: "White",
     description: "Opaque and light.",
-    glass: both(solid([0.97, 0.975, 0.985], 0.55)),
+    glass: both(solid([0.97, 0.975, 0.985])),
     tone: "dark",
   },
   {
     id: "black",
     name: "Black",
     description: "Opaque and dark.",
-    glass: both(solid([0.055, 0.058, 0.068], 0.8)),
+    glass: both(solid([0.055, 0.058, 0.068])),
     tone: "light",
   },
   {
