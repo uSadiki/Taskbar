@@ -81,6 +81,16 @@ pub fn run(safe: bool) {
             commands::audio_set_device,
             commands::brightness_set,
             commands::dark_mode_set,
+            commands::weather_state,
+            commands::weather_search,
+            commands::weather_locate,
+            commands::weather_refresh,
+            commands::github_state,
+            commands::github_set_token,
+            commands::github_clear_token,
+            commands::github_refresh,
+            commands::claude_state,
+            commands::open_url,
             commands::app_info,
             commands::open_settings,
             commands::open_glass_lab,
@@ -156,6 +166,9 @@ fn setup(app: &AppHandle, safe: bool) -> AppResult<()> {
     crate::widgets::media::start(app);
     crate::widgets::battery::start(app, hwnd);
     crate::widgets::toggles::start(app);
+    crate::widgets::weather::start(app);
+    crate::widgets::github::start(app);
+    crate::widgets::claude::start(app);
     hooks::install();
     tray::create(app)?;
     log::info!(
@@ -266,6 +279,16 @@ pub fn settings_changed(app: &AppHandle, old: &Settings, new: &Settings) {
         || old.appearance.dock_size != new.appearance.dock_size;
     if moved {
         dock::reposition();
+    }
+    if old.weather != new.weather {
+        crate::widgets::weather::refresh();
+    }
+    if old.claude != new.claude {
+        crate::widgets::claude::sync_bridge(new.claude.statusline_bridge);
+    }
+    // Leaving quiet time lets held alerts through.
+    if old.notifications != new.notifications {
+        crate::widgets::claude::request_refresh();
     }
 }
 

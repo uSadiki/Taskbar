@@ -2,5 +2,8 @@
 
 pub mod apps;
 pub mod battery;
+pub mod claude;
+pub mod github;
 pub mod media;
 pub mod toggles;
+pub mod weather;

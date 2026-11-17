@@ -16,6 +16,14 @@ root.dataset.scheme = window.matchMedia("(prefers-color-scheme: dark)").matches 
 
 startAppStore();
 
+// Dev builds expose the stores so scripted checks can render widgets with
+// sample data.
+if (import.meta.env.DEV) {
+  void import("./stores/online").then(({ useOnline }) => {
+    (window as unknown as { __online?: typeof useOnline }).__online = useOnline;
+  });
+}
+
 const ui = label === "settings" ? <SettingsApp /> : label === "glasslab" ? <GlassLab /> : <Dock />;
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

@@ -10,13 +10,13 @@ import {
 } from "lucide-react";
 import type { WidgetId } from "../ipc/types";
 
-/** Display name and placeholder glyph for each widget, and the phase it lands in. */
-export const WIDGETS: Record<WidgetId, { label: string; Icon: LucideIcon; phase: number }> = {
-  apps: { label: "Apps", Icon: LayoutGrid, phase: 3 },
-  nowPlaying: { label: "Now Playing", Icon: Music, phase: 4 },
-  weather: { label: "Weather", Icon: CloudSun, phase: 5 },
-  github: { label: "GitHub Activity", Icon: GitBranch, phase: 5 },
-  claude: { label: "Claude Usage", Icon: Gauge, phase: 5 },
-  battery: { label: "Battery Ring", Icon: BatteryMedium, phase: 4 },
-  toggles: { label: "Quick Toggles", Icon: SlidersHorizontal, phase: 4 },
+/** Display name, Settings icon and a one-line description of each widget. */
+export const WIDGETS: Record<WidgetId, { label: string; Icon: LucideIcon; about: string }> = {
+  apps: { label: "Apps", Icon: LayoutGrid, about: "Pinned apps and open windows" },
+  nowPlaying: { label: "Now Playing", Icon: Music, about: "Shown while something is playing" },
+  weather: { label: "Weather", Icon: CloudSun, about: "Shown once a city is chosen" },
+  github: { label: "GitHub Activity", Icon: GitBranch, about: "Shown once a token is added" },
+  claude: { label: "Claude Usage", Icon: Gauge, about: "Limits and usage from Claude Code" },
+  battery: { label: "Battery Ring", Icon: BatteryMedium, about: "Hidden on a PC without a battery" },
+  toggles: { label: "Quick Toggles", Icon: SlidersHorizontal, about: "Wi-Fi, Bluetooth, sound, brightness" },
 };

@@ -161,12 +161,56 @@ impl Default for QuietHours {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Notifications {
     /// "Quiet" in Quick Toggles: hold the dock's alerts until switched off.
     pub muted: bool,
     pub quiet_hours: QuietHours,
+    /// Alert at 80% and 95% of the Claude usage limits.
+    pub claude_limits: bool,
+}
+
+impl Default for Notifications {
+    fn default() -> Self {
+        Self {
+            muted: false,
+            quiet_hours: QuietHours::default(),
+            claude_limits: true,
+        }
+    }
+}
+
+/// A place chosen in the weather city search.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeatherLocation {
+    pub name: String,
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WeatherSettings {
+    pub location: Option<WeatherLocation>,
+    pub fahrenheit: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ClaudeSettings {
+    /// Register Glassdock as Claude Code's status line command, which is how
+    /// it learns the real 5-hour and weekly limits.
+    pub statusline_bridge: bool,
+}
+
+impl Default for ClaudeSettings {
+    fn default() -> Self {
+        Self {
+            statusline_bridge: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -177,6 +221,8 @@ pub struct Settings {
     pub appearance: Appearance,
     pub widgets: Vec<WidgetEntry>,
     pub notifications: Notifications,
+    pub weather: WeatherSettings,
+    pub claude: ClaudeSettings,
 }
 
 impl Default for Settings {
@@ -187,6 +233,8 @@ impl Default for Settings {
             appearance: Appearance::default(),
             widgets: default_widgets(),
             notifications: Notifications::default(),
+            weather: WeatherSettings::default(),
+            claude: ClaudeSettings::default(),
         }
     }
 }

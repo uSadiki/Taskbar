@@ -314,6 +314,112 @@ html[data-window="glasslab"] body {
   }
 }
 
+/* A small dot on a tile that needs attention (an expired token, offline). */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* A clickable line in a popover list (pull requests, events). */
+/* Sideways scrolling without a scrollbar (the hourly forecast). */
+.scroll-x {
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: inherit;
+  text-shadow: inherit;
+  background: transparent;
+}
+
+.list-row:hover {
+  background: var(--fill-hover);
+}
+
+/* Weather icon motion: one quiet movement per icon. */
+.wx-spin {
+  animation: wx-spin 24s linear infinite;
+}
+
+.wx-drift {
+  animation: wx-drift 6s ease-in-out infinite alternate;
+}
+
+.wx-fall {
+  animation: wx-fall 1s linear infinite;
+}
+
+.wx-flash {
+  animation: wx-flash 3s steps(1) infinite;
+}
+
+.wx-glow {
+  animation: wx-glow 5s ease-in-out infinite alternate;
+}
+
+@keyframes wx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wx-drift {
+  to {
+    transform: translateX(1.5px);
+  }
+}
+
+@keyframes wx-fall {
+  0% {
+    transform: translateY(-2px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(3px);
+    opacity: 0;
+  }
+}
+
+@keyframes wx-flash {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.2;
+  }
+  76% {
+    opacity: 1;
+  }
+}
+
+@keyframes wx-glow {
+  to {
+    opacity: 0.8;
+  }
+}
+
 /* ---- Popover content ------------------------------------------------------ */
 
 .glass-button {
@@ -493,6 +599,11 @@ html[data-window="glasslab"] body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wx-spin,
+  .wx-drift,
+  .wx-fall,
+  .wx-flash,
+  .wx-glow,
   .marquee,
   .battery-charging {
     animation: none;

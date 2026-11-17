@@ -16,8 +16,11 @@ use crate::shell::dock::{self, AppInfo, DockLayout};
 use crate::shell::monitors::{self, MonitorInfo};
 use crate::widgets::apps::{self, WindowAction, model::AppGroup};
 use crate::widgets::battery::{self, BatteryState};
+use crate::widgets::claude::{self, ClaudeState};
+use crate::widgets::github::{self, GithubState};
 use crate::widgets::media::{self, MediaCommand, MediaState};
 use crate::widgets::toggles::{self, TogglesSnapshot, radios::RadioName};
+use crate::widgets::weather::{self, Place, WeatherState};
 
 #[tauri::command]
 pub fn get_settings(store: State<'_, SettingsStore>) -> Settings {
@@ -201,6 +204,66 @@ pub fn brightness_set(percent: u8) {
 pub fn dark_mode_set(dark: bool) -> bool {
     toggles::theme::set_dark(dark);
     toggles::theme::is_dark()
+}
+
+// ---- Weather --------------------------------------------------------------
+
+#[tauri::command]
+pub fn weather_state() -> WeatherState {
+    weather::state()
+}
+
+#[tauri::command]
+pub async fn weather_search(query: String) -> Result<Vec<Place>, String> {
+    weather::search(query).await
+}
+
+/// Approximate location from the IP address. Only called when the user asks.
+#[tauri::command]
+pub async fn weather_locate() -> Result<Place, String> {
+    weather::locate().await
+}
+
+#[tauri::command]
+pub fn weather_refresh() {
+    weather::refresh();
+}
+
+// ---- GitHub Activity ------------------------------------------------------
+
+#[tauri::command]
+pub fn github_state() -> GithubState {
+    github::state()
+}
+
+/// Check the token with GitHub, then save it in Credential Manager.
+/// Resolves to the account name.
+#[tauri::command]
+pub async fn github_set_token(token: String) -> Result<String, String> {
+    github::set_token(token).await
+}
+
+#[tauri::command]
+pub fn github_clear_token() {
+    github::clear_token();
+}
+
+#[tauri::command]
+pub fn github_refresh() {
+    github::refresh();
+}
+
+// ---- Claude Usage ---------------------------------------------------------
+
+#[tauri::command]
+pub fn claude_state() -> ClaudeState {
+    claude::state()
+}
+
+/// Open a web page in the default browser. Only https links are accepted.
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    crate::net::open_url(&url)
 }
 
 #[tauri::command]

@@ -1,5 +1,6 @@
 //! Glassdock: a liquid glass smart dock for Windows.
 
+mod alerts;
 mod app;
 mod cli;
 mod commands;
@@ -7,6 +8,7 @@ mod error;
 mod filelog;
 mod geometry;
 mod glass;
+mod net;
 mod paths;
 mod settings;
 mod shell;
@@ -17,6 +19,7 @@ pub fn run() {
     match cli::parse(&args, cli::env_safe()) {
         cli::Mode::Restore => shell::restore_command(),
         cli::Mode::Quit => shell::quit_command(),
+        cli::Mode::Statusline => widgets::claude::statusline::run(),
         cli::Mode::WatchdogLauncher(pid) => shell::watchdog::launch_detached(pid),
         cli::Mode::Watchdog(pid) => shell::watchdog::run(pid),
         cli::Mode::App { safe } => app::run(safe),

@@ -9,6 +9,7 @@
 // Usage:
 //   node scripts/cdp.mjs targets
 //   node scripts/cdp.mjs eval  <label> "<js expression>"
+//   node scripts/cdp.mjs evalfile <label> <file.js>
 //   node scripts/cdp.mjs shot  <label> <out.png>
 //   node scripts/cdp.mjs click <label> <x> <y> [left|right|middle]
 //   node scripts/cdp.mjs move  <label> <x> <y>
@@ -87,9 +88,13 @@ const [command, label, ...rest] = process.argv.slice(2);
 try {
   if (command === "targets") {
     for (const target of await listTargets()) console.log(`${target.title}  ${target.url}`);
-  } else if (command === "eval") {
+  } else if (command === "eval" || command === "evalfile") {
     const session = await sessionFor(label);
-    const value = await evaluate(session, rest.join(" "));
+    const source =
+      command === "evalfile"
+        ? (await import("node:fs/promises")).readFile(rest[0], "utf8")
+        : Promise.resolve(rest.join(" "));
+    const value = await evaluate(session, await source);
     console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
     session.close();
   } else if (command === "shot") {

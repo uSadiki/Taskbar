@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
   type MouseEvent,
+  type ReactNode,
 } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useReducedMotion } from "motion/react";
@@ -20,11 +21,25 @@ import { usePopover } from "./popover";
 import { PopoverHost } from "./PopoverHost";
 import { useDockDrag } from "./useDockDrag";
 import { useHitRegions } from "./useHitRegions";
-import { WIDGETS } from "./widgets";
+import { Toasts } from "./Toasts";
 import { AppsWidget } from "./widgets/AppsWidget";
 import { BatteryTile } from "./widgets/Battery";
+import { ClaudeTile } from "./widgets/Claude";
+import { GithubTile } from "./widgets/Github";
 import { NowPlayingTile } from "./widgets/NowPlaying";
 import { QuickTogglesTile } from "./widgets/QuickToggles";
+import { WeatherTile } from "./widgets/Weather";
+import type { WidgetId } from "../ipc/types";
+
+/** Every widget but Apps, which also brings its divider. */
+const TILES: Record<Exclude<WidgetId, "apps">, (props: { size: number }) => ReactNode> = {
+  nowPlaying: NowPlayingTile,
+  weather: WeatherTile,
+  github: GithubTile,
+  claude: ClaudeTile,
+  battery: BatteryTile,
+  toggles: QuickTogglesTile,
+};
 
 const PILL_RADIUS = 20;
 /** How far the full-width bar's glass extends past the screen edges, so it has no rim there. */
@@ -35,6 +50,8 @@ export function Dock() {
   const settings = useApp((s) => s.settings);
   const barRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const toastRef = useRef<HTMLDivElement>(null);
+  const [toastVisible, setToastVisible] = useState(false);
   const popoverId = usePopover((s) => s.id);
   const togglePopover = usePopover((s) => s.toggle);
   const closePopover = usePopover((s) => s.close);
@@ -51,7 +68,7 @@ export function Dock() {
   scene.reducedMotion = useReducedMotion() ?? false;
   const onPointerDown = useDockDrag();
 
-  useHitRegions([barRef, popoverRef], [layout, settings, popoverId]);
+  useHitRegions([barRef, popoverRef, toastRef], [layout, settings, popoverId, toastVisible]);
 
   // Keep the dock's glass on the bar. Size changes spring; a move to another
   // edge or layout jumps, because the whole window moved with it.
@@ -137,22 +154,8 @@ export function Dock() {
                 </Fragment>
               );
             }
-            if (id === "nowPlaying") return <NowPlayingTile key={id} size={tileSize} />;
-            if (id === "battery") return <BatteryTile key={id} size={tileSize} />;
-            if (id === "toggles") return <QuickTogglesTile key={id} size={tileSize} />;
-            const { label, Icon, phase } = WIDGETS[id];
-            return (
-              <button
-                key={id}
-                type="button"
-                className="dock-tile"
-                style={{ width: tileSize, height: tileSize }}
-                title={`${label} (arrives in phase ${phase})`}
-                aria-label={label}
-              >
-                <Icon size={Math.round(tileSize * 0.5)} strokeWidth={1.75} aria-hidden />
-              </button>
-            );
+            const Tile = TILES[id];
+            return <Tile key={id} size={tileSize} />;
           })}
           {layout.layout === "full" && <div className="flex-1" />}
           {layout.safeMode && (
@@ -165,6 +168,7 @@ export function Dock() {
       </div>
 
       <PopoverHost layout={layout} appearance={appearance} hostRef={popoverRef} />
+      <Toasts layout={layout} appearance={appearance} hostRef={toastRef} onChange={setToastVisible} />
     </div>
   );
 }

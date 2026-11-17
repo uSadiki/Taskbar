@@ -103,7 +103,12 @@ fn column<'a>(block: &'a Value, name: &str) -> &'a [Value] {
 
 /// Turn Open-Meteo's forecast response into a `Forecast`. Returns `None` if
 /// the response has no current conditions.
-pub fn parse_forecast(json: &Value, location: &str, fahrenheit: bool, now: u64) -> Option<Forecast> {
+pub fn parse_forecast(
+    json: &Value,
+    location: &str,
+    fahrenheit: bool,
+    now: u64,
+) -> Option<Forecast> {
     let c = json.get("current")?;
     let current = Current {
         temperature: c.get("temperature_2m")?.as_f64()?,
@@ -126,19 +131,30 @@ pub fn parse_forecast(json: &Value, location: &str, fahrenheit: bool, now: u64) 
             Some(Hour {
                 time: time.as_str()?.to_string(),
                 temperature: column(h, "temperature_2m").get(i)?.as_f64()?,
-                code: column(h, "weather_code").get(i).and_then(Value::as_u64).unwrap_or(0) as u32,
+                code: column(h, "weather_code")
+                    .get(i)
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0) as u32,
                 precipitation_chance: column(h, "precipitation_probability")
                     .get(i)
                     .map(number)
                     .unwrap_or(0.0),
-                is_day: column(h, "is_day").get(i).and_then(Value::as_u64).unwrap_or(1) == 1,
+                is_day: column(h, "is_day")
+                    .get(i)
+                    .and_then(Value::as_u64)
+                    .unwrap_or(1)
+                    == 1,
             })
         })
         .collect();
 
     let d = &json["daily"];
     let text = |name: &str, i: usize| {
-        column(d, name).get(i).and_then(Value::as_str).unwrap_or_default().to_string()
+        column(d, name)
+            .get(i)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
     };
     let days = column(d, "time")
         .iter()
@@ -146,7 +162,10 @@ pub fn parse_forecast(json: &Value, location: &str, fahrenheit: bool, now: u64) 
         .filter_map(|(i, date)| {
             Some(Day {
                 date: date.as_str()?.to_string(),
-                code: column(d, "weather_code").get(i).and_then(Value::as_u64).unwrap_or(0) as u32,
+                code: column(d, "weather_code")
+                    .get(i)
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0) as u32,
                 high: column(d, "temperature_2m_max").get(i)?.as_f64()?,
                 low: column(d, "temperature_2m_min").get(i)?.as_f64()?,
                 precipitation_chance: column(d, "precipitation_probability_max")
@@ -160,7 +179,14 @@ pub fn parse_forecast(json: &Value, location: &str, fahrenheit: bool, now: u64) 
         })
         .collect();
 
-    Some(Forecast { location: location.to_string(), fahrenheit, current, hours, days, fetched_at: now })
+    Some(Forecast {
+        location: location.to_string(),
+        fahrenheit,
+        current,
+        hours,
+        days,
+        fetched_at: now,
+    })
 }
 
 /// Turn Open-Meteo's geocoding response into places.
@@ -183,7 +209,8 @@ pub fn parse_places(json: &Value) -> Vec<Place> {
 }
 
 async fn fetch(location: &WeatherLocation, fahrenheit: bool) -> Result<Forecast, String> {
-    let mut query = vec![
+    let mut query =
+        vec![
         ("latitude", location.latitude.to_string()),
         ("longitude", location.longitude.to_string()),
         (
@@ -229,7 +256,12 @@ pub async fn search(query: String) -> Result<Vec<Place>, String> {
     }
     let json: Value = net::client()
         .get("https://geocoding-api.open-meteo.com/v1/search")
-        .query(&[("name", query.as_str()), ("count", "8"), ("language", "en"), ("format", "json")])
+        .query(&[
+            ("name", query.as_str()),
+            ("count", "8"),
+            ("language", "en"),
+            ("format", "json"),
+        ])
         .send()
         .await
         .and_then(reqwest::Response::error_for_status)
@@ -256,11 +288,18 @@ pub async fn locate() -> Result<Place, String> {
         return Err("The location service could not place this connection".into());
     }
     Ok(Place {
-        name: json["city"].as_str().ok_or("The location service gave no city")?.to_string(),
+        name: json["city"]
+            .as_str()
+            .ok_or("The location service gave no city")?
+            .to_string(),
         region: json["region"].as_str().map(str::to_string),
         country: json["country"].as_str().map(str::to_string),
-        latitude: json["latitude"].as_f64().ok_or("The location service gave no position")?,
-        longitude: json["longitude"].as_f64().ok_or("The location service gave no position")?,
+        latitude: json["latitude"]
+            .as_f64()
+            .ok_or("The location service gave no position")?,
+        longitude: json["longitude"]
+            .as_f64()
+            .ok_or("The location service gave no position")?,
     })
 }
 
@@ -292,17 +331,32 @@ async fn refresh_once(app: &AppHandle) {
         return;
     };
     // Keep showing what we have (or the cached copy) while fetching.
-    let previous = state().forecast.or_else(|| net::cache_read::<Forecast>(CACHE)).filter(|f| {
-        f.location == location.name && f.fahrenheit == settings.fahrenheit
-    });
+    let previous = state()
+        .forecast
+        .or_else(|| net::cache_read::<Forecast>(CACHE))
+        .filter(|f| f.location == location.name && f.fahrenheit == settings.fahrenheit);
     match fetch(&location, settings.fahrenheit).await {
         Ok(forecast) => {
             net::cache_write(CACHE, &forecast);
-            publish(app, WeatherState { configured: true, forecast: Some(forecast), error: None });
+            publish(
+                app,
+                WeatherState {
+                    configured: true,
+                    forecast: Some(forecast),
+                    error: None,
+                },
+            );
         }
         Err(error) => {
             log::warn!("weather: {error}");
-            publish(app, WeatherState { configured: true, forecast: previous, error: Some(error) });
+            publish(
+                app,
+                WeatherState {
+                    configured: true,
+                    forecast: previous,
+                    error: Some(error),
+                },
+            );
         }
     }
 }
@@ -369,20 +423,37 @@ mod tests {
         let forecast = parse_forecast(&sample(), "Oslo", false, 0).unwrap();
         assert_eq!(forecast.hours.len(), 3);
         assert_eq!(forecast.hours[1].time, "2026-11-17T02:00");
-        assert_eq!((forecast.hours[1].temperature, forecast.hours[1].code), (3.1, 3));
+        assert_eq!(
+            (forecast.hours[1].temperature, forecast.hours[1].code),
+            (3.1, 3)
+        );
         // A missing probability reads as zero rather than dropping the hour.
         assert_eq!(forecast.hours[2].precipitation_chance, 0.0);
 
         assert_eq!(forecast.days.len(), 2);
         let day = &forecast.days[0];
-        assert_eq!((day.high, day.low, day.precipitation_chance), (5.2, 1.1, 85.0));
-        assert_eq!((day.sunrise.as_str(), day.sunset.as_str()), ("2026-11-17T08:21", "2026-11-17T15:42"));
+        assert_eq!(
+            (day.high, day.low, day.precipitation_chance),
+            (5.2, 1.1, 85.0)
+        );
+        assert_eq!(
+            (day.sunrise.as_str(), day.sunset.as_str()),
+            ("2026-11-17T08:21", "2026-11-17T15:42")
+        );
     }
 
     #[test]
     fn a_response_without_current_conditions_is_rejected() {
         assert!(parse_forecast(&json!({ "hourly": {} }), "Oslo", false, 0).is_none());
-        assert!(parse_forecast(&json!({ "current": { "weather_code": 1 } }), "Oslo", false, 0).is_none());
+        assert!(
+            parse_forecast(
+                &json!({ "current": { "weather_code": 1 } }),
+                "Oslo",
+                false,
+                0
+            )
+            .is_none()
+        );
     }
 
     #[test]

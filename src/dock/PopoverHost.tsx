@@ -18,6 +18,9 @@ import { AppMenuPopover } from "./popovers/AppMenuPopover";
 import { CalendarPopover } from "./popovers/CalendarPopover";
 import { MenuPopover } from "./popovers/MenuPopover";
 import { BatteryPopover } from "./widgets/Battery";
+import { ClaudePopover } from "./widgets/Claude";
+import { GithubPopover } from "./widgets/Github";
+import { WeatherPopover } from "./widgets/Weather";
 import { NowPlayingPopover } from "./widgets/NowPlaying";
 import { QuickTogglesPopover } from "./widgets/QuickToggles";
 
@@ -34,6 +37,9 @@ const POPOVERS: Record<string, PopoverEntry> = {
   nowPlaying: { width: 300, render: () => <NowPlayingPopover /> },
   battery: { width: 280, render: () => <BatteryPopover /> },
   toggles: { width: 324, render: () => <QuickTogglesPopover /> },
+  weather: { width: 364, render: () => <WeatherPopover /> },
+  github: { width: 520, render: () => <GithubPopover /> },
+  claude: { width: 340, render: () => <ClaudePopover /> },
 };
 
 /** Find the popover for an id. Ids of the form `app:<id>` are per-app menus. */

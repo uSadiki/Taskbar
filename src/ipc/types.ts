@@ -50,7 +50,74 @@ export interface Settings {
     /** Hold the dock's own alerts until switched off. */
     muted: boolean;
     quietHours: { enabled: boolean; start: string; end: string };
+    /** Alert at 80% and 95% of the Claude usage limits. */
+    claudeLimits: boolean;
   };
+  weather: {
+    location: WeatherLocation | null;
+    fahrenheit: boolean;
+  };
+  claude: {
+    /** Register Glassdock as Claude Code's status line command. */
+    statuslineBridge: boolean;
+  };
+}
+
+export interface WeatherLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface Place extends WeatherLocation {
+  region: string | null;
+  country: string | null;
+}
+
+export interface WeatherCurrent {
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  precipitation: number;
+  code: number;
+  windSpeed: number;
+  windDirection: number;
+  isDay: boolean;
+  uvIndex: number;
+}
+
+export interface WeatherHour {
+  time: string;
+  temperature: number;
+  code: number;
+  precipitationChance: number;
+  isDay: boolean;
+}
+
+export interface WeatherDay {
+  date: string;
+  code: number;
+  high: number;
+  low: number;
+  precipitationChance: number;
+  sunrise: string;
+  sunset: string;
+  uvIndexMax: number;
+}
+
+export interface Forecast {
+  location: string;
+  fahrenheit: boolean;
+  current: WeatherCurrent;
+  hours: WeatherHour[];
+  days: WeatherDay[];
+  fetchedAt: number;
+}
+
+export interface WeatherState {
+  configured: boolean;
+  forecast: Forecast | null;
+  error: string | null;
 }
 
 /** A JSON merge patch: any subset of the settings tree; null clears a field. */
@@ -207,4 +274,107 @@ export interface CssRect {
   y: number;
   width: number;
   height: number;
+}
+
+// ---- GitHub Activity --------------------------------------------------------
+
+export type GithubStatus = "noToken" | "ok" | "invalidToken" | "rateLimited" | "offline" | "error";
+
+export interface ContributionDay {
+  date: string;
+  count: number;
+  /** 0 (none) to 4 (most). */
+  level: number;
+}
+
+export interface PullRequest {
+  title: string;
+  url: string;
+  number: number;
+  repo: string;
+  draft: boolean;
+  updatedAt: string;
+}
+
+export interface GithubEvent {
+  kind: "push" | "pr" | "issue" | "review" | "comment" | "create" | "other";
+  summary: string;
+  repo: string;
+  url: string;
+  createdAt: string;
+}
+
+export interface GithubData {
+  login: string;
+  totalYear: number;
+  days: ContributionDay[];
+  today: number;
+  currentStreak: number;
+  longestStreak: number;
+  authored: PullRequest[];
+  authoredTotal: number;
+  reviewRequests: PullRequest[];
+  reviewTotal: number;
+  events: GithubEvent[];
+  fetchedAt: number;
+}
+
+export interface GithubState {
+  status: GithubStatus;
+  message: string | null;
+  data: GithubData | null;
+}
+
+// ---- Claude Usage -----------------------------------------------------------
+
+export interface LimitWindow {
+  usedPercentage: number;
+  /** Unix seconds. */
+  resetsAt: number;
+}
+
+export interface Limits {
+  fiveHour: LimitWindow | null;
+  sevenDay: LimitWindow | null;
+  updatedAt: number;
+}
+
+export type Bridge = "installed" | "otherCommand" | "off" | "devBuild" | "noClaudeCode" | "error";
+
+export interface UsageTotals {
+  tokens: number;
+  output: number;
+  /** Estimated API cost, US dollars. */
+  cost: number;
+  requests: number;
+}
+
+export interface UsageBlock extends UsageTotals {
+  start: number;
+  end: number;
+  tokensPerMinute: number;
+  costPerHour: number;
+  projectedCost: number;
+}
+
+export interface ClaudeState {
+  limits: Limits | null;
+  bridge: Bridge | null;
+  fiveHourRunsOutAt: number | null;
+  block: UsageBlock | null;
+  days: (UsageTotals & { date: string })[];
+  models: (UsageTotals & { model: string; label: string })[];
+  week: UsageTotals;
+  hasLogs: boolean;
+}
+
+// ---- Alerts -----------------------------------------------------------------
+
+export interface Alert {
+  id: string;
+  title: string;
+  body: string;
+  level: "info" | "warning" | "critical";
+  /** Popover to open when the toast is clicked. */
+  open: string | null;
 }

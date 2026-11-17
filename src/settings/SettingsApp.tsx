@@ -15,6 +15,7 @@ import type { AppInfo, MonitorInfo, Settings, SettingsPatch } from "../ipc/types
 import { useApp } from "../stores/app";
 import { useScheme } from "../themes/useAppearance";
 import { Appearance } from "./AppearanceSection";
+import { WidgetSettings } from "./WidgetSettings";
 import { Button, Notice, Row, Section, Segmented, Toggle } from "./controls";
 
 type SectionId = "general" | "appearance" | "widgets" | "notifications" | "about";
@@ -65,7 +66,7 @@ export function SettingsApp() {
         <h1 className="mb-5 text-xl font-semibold">{SECTIONS.find((s) => s.id === section)?.label}</h1>
         {section === "general" && <General settings={settings} info={info} update={update} />}
         {section === "appearance" && <Appearance settings={settings} update={update} />}
-        {section === "widgets" && <Widgets settings={settings} update={update} />}
+        {section === "widgets" && <WidgetsPage settings={settings} update={update} />}
         {section === "notifications" && <Notifications settings={settings} update={update} />}
         {section === "about" && <About info={info} />}
       </main>
@@ -178,13 +179,13 @@ function Widgets({ settings, update }: { settings: Settings; update: Update }) {
   return (
     <Section title="Shown in the dock, in this order">
       {widgets.map((widget, index) => {
-        const { label, Icon, phase } = WIDGETS[widget.id];
+        const { label, Icon, about } = WIDGETS[widget.id];
         return (
           <div key={widget.id} className="flex items-center gap-3 px-4 py-2.5">
             <Icon size={18} className="flex-none text-[var(--text-muted)]" aria-hidden />
             <div className="min-w-0 flex-1">
               <div className="font-medium">{label}</div>
-              <div className="text-[12.5px] text-[var(--text-muted)]">Placeholder until phase {phase}</div>
+              <div className="text-[12.5px] text-[var(--text-muted)]">{about}</div>
             </div>
             <Button label={`Move ${label} up`} disabled={index === 0} onClick={() => move(index, -1)}>
               <ChevronUp size={14} aria-hidden />
@@ -204,15 +205,47 @@ function Widgets({ settings, update }: { settings: Settings; update: Update }) {
   );
 }
 
+function WidgetsPage({ settings, update }: { settings: Settings; update: Update }) {
+  return (
+    <>
+      <Widgets settings={settings} update={update} />
+      <WidgetSettings settings={settings} update={update} />
+    </>
+  );
+}
+
 function Notifications({ settings, update }: { settings: Settings; update: Update }) {
   const { quietHours } = settings.notifications;
   const timeInput =
     "rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2 py-1 text-[13px] disabled:opacity-45";
   return (
+    <>
+    <Section title="Alerts">
+      <Row
+        label="Claude usage limits"
+        description="A toast above the dock when the 5-hour or weekly limit reaches 80% and again at 95%."
+      >
+        <Toggle
+          label="Claude usage limit alerts"
+          checked={settings.notifications.claudeLimits}
+          onChange={(claudeLimits) => update({ notifications: { claudeLimits } })}
+        />
+      </Row>
+      <Row
+        label="Quiet"
+        description="Holds every alert until it is switched off. Also in Quick Toggles."
+      >
+        <Toggle
+          label="Quiet"
+          checked={settings.notifications.muted}
+          onChange={(muted) => update({ notifications: { muted } })}
+        />
+      </Row>
+    </Section>
     <Section title="Quiet hours">
       <Row
-        label="Hold the dock's alerts"
-        description="Applies to Glassdock's own alerts, which arrive with the widgets in phases 5 and 6."
+        label="Hold alerts on a schedule"
+        description="Alerts that come up during quiet hours are shown when they end."
       >
         <Toggle
           label="Quiet hours"
@@ -248,6 +281,7 @@ function Notifications({ settings, update }: { settings: Settings; update: Updat
         </div>
       </Row>
     </Section>
+    </>
   );
 }
 

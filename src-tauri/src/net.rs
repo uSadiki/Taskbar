@@ -42,7 +42,9 @@ pub fn describe(error: &reqwest::Error) -> String {
 }
 
 fn cache_path(name: &str) -> PathBuf {
-    paths::local_dir().join("cache").join(format!("{name}.json"))
+    paths::local_dir()
+        .join("cache")
+        .join(format!("{name}.json"))
 }
 
 pub fn cache_read<T: DeserializeOwned>(name: &str) -> Option<T> {
@@ -74,4 +76,32 @@ pub fn now_unix() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+/// Open an https link in the default browser.
+pub fn open_url(url: &str) -> Result<(), String> {
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    use windows::core::{HSTRING, w};
+
+    let parsed = reqwest::Url::parse(url).map_err(|_| "Not a valid link".to_string())?;
+    if parsed.scheme() != "https" {
+        return Err("Only https links can be opened".into());
+    }
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            w!("open"),
+            &HSTRING::from(parsed.as_str()),
+            None,
+            None,
+            SW_SHOWNORMAL,
+        )
+    };
+    // ShellExecute reports success with a value above 32.
+    if result.0 as isize > 32 {
+        Ok(())
+    } else {
+        Err("The link could not be opened".into())
+    }
 }

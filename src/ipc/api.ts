@@ -1,21 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
+  Alert,
   AppGroup,
   AppInfo,
   AudioState,
   BackdropInfo,
   BatteryState,
+  ClaudeState,
+  GithubState,
   CssRect,
   DockLayout,
   MediaCommand,
   MediaState,
   MonitorInfo,
+  Place,
   RadiosState,
   Settings,
   SettingsPatch,
   TogglesSnapshot,
   WindowAction,
+  WeatherState,
   WindowOrigin,
 } from "./types";
 
@@ -56,6 +61,17 @@ export const api = {
   brightnessSet: (percent: number) => invoke<void>("brightness_set", { percent }),
   /** Switches Windows' light/dark mode; resolves to the mode now in effect. */
   darkModeSet: (dark: boolean) => invoke<boolean>("dark_mode_set", { dark }),
+  weatherState: () => invoke<WeatherState>("weather_state"),
+  weatherSearch: (query: string) => invoke<Place[]>("weather_search", { query }),
+  weatherLocate: () => invoke<Place>("weather_locate"),
+  weatherRefresh: () => invoke<void>("weather_refresh"),
+  githubState: () => invoke<GithubState>("github_state"),
+  /** Checks the token with GitHub and saves it; resolves to the account name. */
+  githubSetToken: (token: string) => invoke<string>("github_set_token", { token }),
+  githubClearToken: () => invoke<void>("github_clear_token"),
+  githubRefresh: () => invoke<void>("github_refresh"),
+  claudeState: () => invoke<ClaudeState>("claude_state"),
+  openUrl: (url: string) => invoke<void>("open_url", { url }),
   appInfo: () => invoke<AppInfo>("app_info"),
   openSettings: () => invoke<void>("open_settings"),
   restoreTaskbar: () => invoke<void>("restore_taskbar"),
@@ -82,6 +98,14 @@ export const events = {
     listen<RadiosState>("radios://changed", (e) => cb(e.payload)),
   audioChanged: (cb: (state: AudioState) => void): Promise<UnlistenFn> =>
     listen<AudioState>("audio://changed", (e) => cb(e.payload)),
+  weatherChanged: (cb: (state: WeatherState) => void): Promise<UnlistenFn> =>
+    listen<WeatherState>("weather://changed", (e) => cb(e.payload)),
+  githubChanged: (cb: (state: GithubState) => void): Promise<UnlistenFn> =>
+    listen<GithubState>("github://changed", (e) => cb(e.payload)),
+  claudeChanged: (cb: (state: ClaudeState) => void): Promise<UnlistenFn> =>
+    listen<ClaudeState>("claude://changed", (e) => cb(e.payload)),
+  alert: (cb: (alert: Alert) => void): Promise<UnlistenFn> =>
+    listen<Alert>("alert://show", (e) => cb(e.payload)),
   backdrop: (cb: (info: BackdropInfo) => void): Promise<UnlistenFn> =>
     listen<BackdropInfo>("glass://backdrop", (e) => cb(e.payload)),
   appInfo: (cb: (info: AppInfo) => void): Promise<UnlistenFn> =>

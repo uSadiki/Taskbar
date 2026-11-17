@@ -9,6 +9,9 @@ pub enum Mode {
     Restore,
     /// Ask a running dock to quit cleanly, then exit.
     Quit,
+    /// Claude Code's status line command: read its JSON on stdin, save the
+    /// usage limits, print a status line.
+    Statusline,
     /// Start a detached watchdog for the given process id and exit.
     WatchdogLauncher(u32),
     /// Wait for the given process to exit, then restore the taskbar if needed.
@@ -23,6 +26,7 @@ pub fn parse(args: &[String], env_safe: bool) -> Mode {
         match arg.as_str() {
             "--restore" => return Mode::Restore,
             "--quit" => return Mode::Quit,
+            "--statusline" => return Mode::Statusline,
             "--watchdog-launcher" => {
                 if let Some(pid) = iter.next().and_then(|v| v.parse().ok()) {
                     return Mode::WatchdogLauncher(pid);
@@ -77,6 +81,11 @@ mod tests {
     #[test]
     fn quit_is_its_own_mode() {
         assert_eq!(parse(&args(&["--quit"]), false), Mode::Quit);
+    }
+
+    #[test]
+    fn statusline_is_its_own_mode() {
+        assert_eq!(parse(&args(&["--statusline"]), false), Mode::Statusline);
     }
 
     #[test]
