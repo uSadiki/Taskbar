@@ -29,7 +29,8 @@ export function CalendarPopover() {
         {!onCurrentMonth && (
           <button
             type="button"
-            className="glass-button px-2 text-[12px]"
+            className="glass-button text-[12px]"
+            style={{ padding: "0 8px" }}
             onClick={() => setView({ year: today.getFullYear(), month: today.getMonth() })}
           >
             Today

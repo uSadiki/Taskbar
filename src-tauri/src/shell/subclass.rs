@@ -9,7 +9,8 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     MA_NOACTIVATE, WA_INACTIVE, WM_ACTIVATE, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ENDSESSION,
-    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_SETTINGCHANGE, WM_TIMER, WM_WINDOWPOSCHANGED,
+    WM_MOUSEACTIVATE, WM_NCDESTROY, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER,
+    WM_WINDOWPOSCHANGED,
 };
 
 use super::{appbar, dock, guard, quit_message, restore_message, taskbar_created_message};
@@ -92,6 +93,13 @@ fn handle(hwnd: HWND, msg: u32, wparam: WPARAM, _lparam: LPARAM) -> Option<LRESU
         WM_TIMER if wparam.0 == dock::FULLSCREEN_RETRY_TIMER => {
             dock::on_fullscreen_retry();
             Some(LRESULT(0))
+        }
+        // Battery level, power source or battery saver changed.
+        WM_POWERBROADCAST => {
+            if let Some(rt) = dock::runtime() {
+                crate::widgets::battery::refresh(&rt.app);
+            }
+            None
         }
         // The wallpaper, its fit mode or the background colour changed.
         WM_SETTINGCHANGE if wparam.0 == SPI_SETDESKWALLPAPER => {

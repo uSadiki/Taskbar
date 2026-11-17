@@ -24,15 +24,27 @@ log = "0.4"
 notify = "8"
 parking_lot = "0.12"
 png = "0.18"
+windows-core = "0.62"
+windows-future = "0.3"
+wmi = "0.18"
 
 # Same major/minor as the copy Tauri, tao and wry use, so HWND and friends are one type.
 [dependencies.windows]
 version = "0.62"
 features = [
+  "Devices_Power",
+  "Devices_Radios",
+  "Foundation",
+  "Foundation_Collections",
+  "Media_Control",
+  "Storage_Streams",
+  "Win32_Devices_FunctionDiscovery",
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_Graphics_Imaging",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
   "Win32_Security",
   "Win32_Storage_EnhancedStorage",
   "Win32_Storage_FileSystem",
@@ -41,7 +53,9 @@ features = [
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Diagnostics_Debug",
   "Win32_System_Kernel",
+  "Win32_System_Power",
   "Win32_System_Registry",
+  "Win32_System_SystemServices",
   "Win32_System_Threading",
   "Win32_System_Variant",
   "Win32_UI_Accessibility",

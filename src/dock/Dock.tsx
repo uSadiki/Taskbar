@@ -22,6 +22,9 @@ import { useDockDrag } from "./useDockDrag";
 import { useHitRegions } from "./useHitRegions";
 import { WIDGETS } from "./widgets";
 import { AppsWidget } from "./widgets/AppsWidget";
+import { BatteryTile } from "./widgets/Battery";
+import { NowPlayingTile } from "./widgets/NowPlaying";
+import { QuickTogglesTile } from "./widgets/QuickToggles";
 
 const PILL_RADIUS = 20;
 /** How far the full-width bar's glass extends past the screen edges, so it has no rim there. */
@@ -134,6 +137,9 @@ export function Dock() {
                 </Fragment>
               );
             }
+            if (id === "nowPlaying") return <NowPlayingTile key={id} size={tileSize} />;
+            if (id === "battery") return <BatteryTile key={id} size={tileSize} />;
+            if (id === "toggles") return <QuickTogglesTile key={id} size={tileSize} />;
             const { label, Icon, phase } = WIDGETS[id];
             return (
               <button

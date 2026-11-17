@@ -9,8 +9,8 @@ The plan is in [PLAN.md](PLAN.md). This file records what is done, what was deci
 | 0. Prerequisites and plan | Done 2026-11-16 |
 | 1. Dock shell | Done 2026-11-16, verified in full mode |
 | 2. Liquid glass | Done 2026-11-17 |
-| 3. Apps widget | Not started |
-| 4. Now Playing, Battery Ring, Quick Toggles | Not started |
+| 3. Apps widget | Done 2026-11-17 |
+| 4. Now Playing, Battery Ring, Quick Toggles | Done 2026-11-17 |
 | 5. Weather, GitHub Activity, Claude Usage | Not started |
 | 6. Polish and release | Not started |
 
@@ -124,6 +124,63 @@ How I verify without touching your mouse or keyboard: `scripts/cdp.mjs` drives t
 - EXIF orientation of wallpapers is not applied.
 - Only the Fill fit mode has been seen on screen; the others are covered by unit tests only.
 - The drag between edges still snaps without a spring.
+
+## Phase 3: Apps widget
+
+### Done
+
+- Pinned apps from the `Taskband\Favorites` registry value (read-only), in taskbar order, including Store apps. The layout matched what the plan assumed: `[0x00][u32 length][item id list]` records ended by `0xFF`. Falls back to the pin folder's shortcuts. Pinning or unpinning in Windows updates the dock (pin folder watcher plus `RegNotifyChangeKeyValue`).
+- Open windows by the Alt-Tab rule (visible, not a tool window, not owned, not cloaked, titled), grouped by AppUserModelID, then executable.
+- High-resolution icons from `IShellItemImageFactory`, kept in memory for the session.
+- Left click launches, focuses, minimizes the app in front, or steps through an app's windows. Middle click opens a new instance. Right click opens a menu with the app's windows (focus or close each), New window, and Close all.
+- A dot per window, an accent bar under the app in front, spring magnification on hover.
+- Shell work runs on its own thread (a single-threaded apartment with a message pump), so the dock never waits on the shell.
+
+### Verified
+
+- All eight of this PC's pins resolved with name, identity and icon: Discord, Spotify, Chrome, Terminal, File Explorer, Visual Studio Code, Armoury Crate, Claude.
+- With a File Explorer window opened for the test: launch from the pin, focus, minimize by clicking the app in front, restore, and close all each behaved correctly.
+- 22 new unit tests for grouping, matching and click behaviour.
+
+### Bugs found and fixed while verifying
+
+- Discord showed twice. Its pin points at `Discord\Discord.exe` while it runs from `Discord\app-<version>\Discord.exe`; matching now ignores version folders.
+- File Explorer's pin has no shortcut target and its windows declare no identity; they are now matched by executable.
+
+### Not done
+
+- Live window thumbnails on hover (the stretch goal).
+- Reordering widgets by dragging in the dock. Settings has up/down buttons.
+- Icons are not cached on disk; each is rendered once per run.
+- Only left click, the menu and its actions were exercised. Middle click and the hover magnification were not exercised with a real mouse.
+
+## Phase 4: Now Playing, Battery Ring, Quick Toggles
+
+### Done
+
+- **Now Playing**: Windows' media session manager, event-driven with no polling. Prefers Spotify when several apps are playing. Tile with artwork, scrolling title and artist, play/pause. Popover with large artwork, seek bar, previous/play/next, shuffle and repeat when the player supports them, tinted from the artwork's average colour. Hidden when nothing is playing.
+- **Battery Ring**: level, charging state, time remaining, and time to full from the charge rate. Updated by power notifications, no timer. Hidden on a PC without a battery.
+- **Quick Toggles**: Wi-Fi and Bluetooth (`Windows.Devices.Radios`), volume, mute and output device (Core Audio), brightness (WMI), Windows light/dark mode, and Quiet for the dock's own alerts.
+- Output device switching uses the undocumented `IPolicyConfig` interface, as the plan said it would have to; it is confined to one call in `toggles/audio.rs`.
+- Focus Assist and Night Light are not included, as decided.
+
+### Verified on this PC
+
+- Radios: both found without a package identity; Wi-Fi reported on, Bluetooth off.
+- Volume +1 and back, mute and unmute, brightness -1 and back all took effect and returned to the starting values. Dark mode, Bluetooth and the output device were re-applied at their current values, which exercises the calls without changing anything. No warnings were logged.
+- Now Playing, with a silent test clip in an Edge window: title, artist and artwork arrived; pause, play and seek worked; the tile disappeared when the player closed.
+- 12 new backend tests (battery state, media commands, brightness path) and 6 new frontend tests.
+
+### Not verified
+
+- Switching Wi-Fi or Bluetooth to the other state, switching to the other output device, and flipping light/dark mode: each would have disturbed the PC in use, so only the no-change calls were made.
+- Spotify itself, and shuffle/repeat (the test clip does not offer them).
+- Charging: the PC was on battery throughout.
+
+### Not done
+
+- Bluetooth device batteries and external-monitor brightness over DDC/CI (both stretch goals).
+- Brightness changed outside the dock (hotkeys) shows the next time the popover opens, not live.
 
 ## Decisions
 

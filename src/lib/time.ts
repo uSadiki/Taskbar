@@ -17,3 +17,35 @@ export function formatDate(now: Date, locale?: string): string {
     month: "short",
   }).format(now);
 }
+
+/** A length of time in words: "3 h 10 min", "40 min", "under a minute". */
+export function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 1) return "under a minute";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/** A playback position: "3:07", "1:02:45". */
+export function formatPlayback(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, "0");
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+/**
+ * Where playback is now, from the last reported position. Players report a
+ * position only now and then; while playing, it advances with the clock.
+ */
+export function playbackPosition(
+  state: { positionMs: number; durationMs: number; updatedAtMs: number; playing: boolean },
+  nowMs: number,
+): number {
+  const elapsed = state.playing && state.updatedAtMs > 0 ? Math.max(0, nowMs - state.updatedAtMs) : 0;
+  const position = state.positionMs + elapsed;
+  return state.durationMs > 0 ? Math.min(position, state.durationMs) : position;
+}

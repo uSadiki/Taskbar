@@ -15,6 +15,9 @@ use crate::settings::{Settings, SettingsStore};
 use crate::shell::dock::{self, AppInfo, DockLayout};
 use crate::shell::monitors::{self, MonitorInfo};
 use crate::widgets::apps::{self, WindowAction, model::AppGroup};
+use crate::widgets::battery::{self, BatteryState};
+use crate::widgets::media::{self, MediaCommand, MediaState};
+use crate::widgets::toggles::{self, TogglesSnapshot, radios::RadioName};
 
 #[tauri::command]
 pub fn get_settings(store: State<'_, SettingsStore>) -> Settings {
@@ -133,6 +136,71 @@ pub fn apps_window_action(hwnd: isize, action: WindowAction) {
 #[tauri::command]
 pub fn apps_close_all(id: String) {
     apps::close_all(id);
+}
+
+// ---- Now Playing ----------------------------------------------------------
+
+#[tauri::command]
+pub fn media_state() -> MediaState {
+    media::state()
+}
+
+/// The current album art as raw image bytes; empty when there is none.
+#[tauri::command]
+pub async fn media_art() -> tauri::ipc::Response {
+    tauri::ipc::Response::new(media::art())
+}
+
+#[tauri::command]
+pub fn media_command(command: MediaCommand) {
+    media::command(command);
+}
+
+// ---- Battery --------------------------------------------------------------
+
+#[tauri::command]
+pub fn battery_state() -> BatteryState {
+    battery::state()
+}
+
+// ---- Quick Toggles --------------------------------------------------------
+
+/// Async: reading brightness waits on the shell worker.
+#[tauri::command]
+pub async fn toggles_snapshot() -> TogglesSnapshot {
+    toggles::snapshot()
+}
+
+#[tauri::command]
+pub fn radio_set(radio: RadioName, on: bool) {
+    toggles::radios::set(radio, on);
+}
+
+#[tauri::command]
+pub fn audio_set_volume(percent: u8) {
+    toggles::audio::set_volume(percent);
+}
+
+#[tauri::command]
+pub fn audio_set_muted(muted: bool) {
+    toggles::audio::set_muted(muted);
+}
+
+#[tauri::command]
+pub fn audio_set_device(id: String) {
+    toggles::audio::set_default_device(id);
+}
+
+#[tauri::command]
+pub fn brightness_set(percent: u8) {
+    toggles::set_brightness(percent);
+}
+
+/// Switch Windows between light and dark mode. Returns the mode now in effect.
+#[tauri::command]
+pub fn dark_mode_set(dark: bool) -> bool {
+    toggles::theme::set_dark(dark);
+    toggles::theme::is_dark()
 }
 
 #[tauri::command]

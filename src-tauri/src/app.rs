@@ -70,6 +70,17 @@ pub fn run(safe: bool) {
             commands::apps_launch,
             commands::apps_window_action,
             commands::apps_close_all,
+            commands::media_state,
+            commands::media_art,
+            commands::media_command,
+            commands::battery_state,
+            commands::toggles_snapshot,
+            commands::radio_set,
+            commands::audio_set_volume,
+            commands::audio_set_muted,
+            commands::audio_set_device,
+            commands::brightness_set,
+            commands::dark_mode_set,
             commands::app_info,
             commands::open_settings,
             commands::open_glass_lab,
@@ -142,6 +153,9 @@ fn setup(app: &AppHandle, safe: bool) -> AppResult<()> {
     dock::show();
     crate::glass::start_watching(app);
     crate::widgets::apps::start(app);
+    crate::widgets::media::start(app);
+    crate::widgets::battery::start(app, hwnd);
+    crate::widgets::toggles::start(app);
     hooks::install();
     tray::create(app)?;
     log::info!(

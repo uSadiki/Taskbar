@@ -33,3 +33,44 @@ describe("formatting", () => {
     expect(text).toContain("16");
   });
 });
+
+import { formatDuration, formatPlayback, playbackPosition } from "./time";
+
+describe("formatDuration", () => {
+  it("uses hours and minutes as needed", () => {
+    expect(formatDuration(20)).toBe("under a minute");
+    expect(formatDuration(40 * 60)).toBe("40 min");
+    expect(formatDuration(3 * 3600)).toBe("3 h");
+    expect(formatDuration(3 * 3600 + 10 * 60 + 20)).toBe("3 h 10 min");
+  });
+});
+
+describe("formatPlayback", () => {
+  it("pads seconds, and minutes once there are hours", () => {
+    expect(formatPlayback(0)).toBe("0:00");
+    expect(formatPlayback(187_000)).toBe("3:07");
+    expect(formatPlayback(3_765_000)).toBe("1:02:45");
+    expect(formatPlayback(-5)).toBe("0:00");
+  });
+});
+
+describe("playbackPosition", () => {
+  const base = { positionMs: 60_000, durationMs: 200_000, updatedAtMs: 1_000_000 };
+
+  it("advances with the clock while playing", () => {
+    expect(playbackPosition({ ...base, playing: true }, 1_030_000)).toBe(90_000);
+  });
+
+  it("stays put while paused", () => {
+    expect(playbackPosition({ ...base, playing: false }, 1_030_000)).toBe(60_000);
+  });
+
+  it("never passes the end, and tolerates a clock behind the report", () => {
+    expect(playbackPosition({ ...base, playing: true }, 9_000_000)).toBe(200_000);
+    expect(playbackPosition({ ...base, playing: true }, 900_000)).toBe(60_000);
+  });
+
+  it("does not extrapolate when the player never reported a time", () => {
+    expect(playbackPosition({ ...base, updatedAtMs: 0, playing: true }, 5_000_000)).toBe(60_000);
+  });
+});

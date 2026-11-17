@@ -164,6 +164,8 @@ impl Default for QuietHours {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Notifications {
+    /// "Quiet" in Quick Toggles: hold the dock's alerts until switched off.
+    pub muted: bool,
     pub quiet_hours: QuietHours,
 }
 

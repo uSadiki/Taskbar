@@ -27,6 +27,7 @@ export function Clock() {
     <button
       type="button"
       className="dock-clock"
+      data-widget="clock"
       aria-label={`${formatTime(now)}, ${formatDate(now)}. Open calendar`}
       aria-expanded={open}
       onClick={(e) => toggle("clock", anchorOf(e.currentTarget))}

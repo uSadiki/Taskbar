@@ -47,6 +47,8 @@ export interface Settings {
   };
   widgets: WidgetEntry[];
   notifications: {
+    /** Hold the dock's own alerts until switched off. */
+    muted: boolean;
     quietHours: { enabled: boolean; start: string; end: string };
   };
 }
@@ -133,6 +135,71 @@ export interface AppGroup {
 }
 
 export type WindowAction = "focus" | "minimize" | "close";
+
+export interface MediaState {
+  available: boolean;
+  app: string;
+  title: string;
+  artist: string;
+  album: string;
+  playing: boolean;
+  /** Position when last reported, and when that was (Unix ms). */
+  positionMs: number;
+  durationMs: number;
+  updatedAtMs: number;
+  canToggle: boolean;
+  canNext: boolean;
+  canPrevious: boolean;
+  canSeek: boolean;
+  /** null when the player doesn't support the control. */
+  shuffle: boolean | null;
+  repeat: "none" | "track" | "list" | null;
+  artRev: number;
+}
+
+export type MediaCommand =
+  | { type: "toggle" | "next" | "previous" }
+  | { type: "seek"; positionMs: number }
+  | { type: "shuffle"; on: boolean }
+  | { type: "repeat"; mode: "none" | "track" | "list" };
+
+export interface BatteryState {
+  present: boolean;
+  percent: number | null;
+  plugged: boolean;
+  charging: boolean;
+  saver: boolean;
+  secondsRemaining: number | null;
+  secondsToFull: number | null;
+}
+
+export interface RadiosState {
+  /** null: no such radio, or Windows denied control of it. */
+  wifi: boolean | null;
+  bluetooth: boolean | null;
+}
+
+export interface OutputDevice {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface AudioState {
+  available: boolean;
+  /** 0 to 100. */
+  volume: number;
+  muted: boolean;
+  devices: OutputDevice[];
+}
+
+export interface TogglesSnapshot {
+  radios: RadiosState;
+  audio: AudioState;
+  /** null when no display supports brightness control. */
+  brightness: number | null;
+  darkMode: boolean;
+}
 
 /** A rectangle in CSS pixels relative to the window. */
 export interface CssRect {

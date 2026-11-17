@@ -259,13 +259,70 @@ html[data-window="glasslab"] body {
   background: var(--accent);
 }
 
+/* ---- Status widgets -------------------------------------------------------- */
+
+/* A wider tile holding more than an icon (Now Playing). */
+.dock-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 0 6px 0 5px;
+  border-radius: 12px;
+  background: var(--fill);
+  transition: background-color 120ms ease;
+}
+
+.dock-chip:hover,
+.dock-chip[data-open="true"] {
+  background: var(--fill-hover);
+}
+
+.dock-chip button {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-shadow: inherit;
+  background: transparent;
+}
+
+/* Text too long for its tile slides to its end and back. */
+.marquee {
+  animation: marquee 9s ease-in-out infinite alternate;
+}
+
+@keyframes marquee {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(var(--marquee-shift));
+  }
+}
+
+/* The ring breathes while charging. */
+.battery-charging {
+  animation: charging 2.4s ease-in-out infinite;
+}
+
+@keyframes charging {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 /* ---- Popover content ------------------------------------------------------ */
 
 .glass-button {
   display: grid;
   place-items: center;
+  flex: none;
   min-width: 28px;
-  height: 28px;
+  min-height: 28px;
+  padding: 0;
   border: 0;
   border-radius: 8px;
   font: inherit;
@@ -277,6 +334,129 @@ html[data-window="glasslab"] body {
 
 .glass-button:hover {
   background: var(--fill-hover);
+}
+
+.glass-button:disabled {
+  opacity: 0.35;
+}
+
+.glass-button[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+/* The one main action of a popover (play/pause). */
+.glass-button-primary {
+  border-radius: 50%;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.glass-button-primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+/* A slider on glass: the filled part is the accent colour, up to --fill. */
+.glass-slider {
+  flex: 1;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+}
+
+.glass-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--stroke) var(--fill, 0%));
+}
+
+.glass-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  appearance: none;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+.glass-slider:disabled::-webkit-slider-thumb {
+  display: none;
+}
+
+/* A large on/off button in Quick Toggles. */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  color: inherit;
+  text-shadow: inherit;
+  background: var(--fill);
+  transition: background-color 120ms ease;
+}
+
+.toggle-switch:hover {
+  background: var(--fill-hover);
+}
+
+.toggle-switch:disabled {
+  opacity: 0.45;
+}
+
+.toggle-switch-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--fill-hover);
+}
+
+.toggle-switch[aria-checked="true"] .toggle-switch-icon {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+/* One choice in a list where exactly one is selected (output devices). */
+.device-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: inherit;
+  text-shadow: inherit;
+  background: transparent;
+}
+
+.device-option:hover {
+  background: var(--fill-hover);
+}
+
+.device-option-mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--ink-faint);
+}
+
+.device-option[aria-checked="true"] .device-option-mark {
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent);
 }
 
 .glass-menu {
@@ -313,6 +493,11 @@ html[data-window="glasslab"] body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .marquee,
+  .battery-charging {
+    animation: none;
+  }
+
   .dock-tile,
   .dock-clock,
   .glass-button {

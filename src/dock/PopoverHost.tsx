@@ -17,6 +17,9 @@ import { usePopover, type Anchor } from "./popover";
 import { AppMenuPopover } from "./popovers/AppMenuPopover";
 import { CalendarPopover } from "./popovers/CalendarPopover";
 import { MenuPopover } from "./popovers/MenuPopover";
+import { BatteryPopover } from "./widgets/Battery";
+import { NowPlayingPopover } from "./widgets/NowPlaying";
+import { QuickTogglesPopover } from "./widgets/QuickToggles";
 
 interface PopoverEntry {
   /** Width in CSS pixels; the height follows the content. */
@@ -28,6 +31,9 @@ interface PopoverEntry {
 const POPOVERS: Record<string, PopoverEntry> = {
   menu: { width: 208, render: () => <MenuPopover /> },
   clock: { width: 304, render: () => <CalendarPopover /> },
+  nowPlaying: { width: 300, render: () => <NowPlayingPopover /> },
+  battery: { width: 280, render: () => <BatteryPopover /> },
+  toggles: { width: 324, render: () => <QuickTogglesPopover /> },
 };
 
 /** Find the popover for an id. Ids of the form `app:<id>` are per-app menus. */

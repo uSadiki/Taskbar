@@ -3,12 +3,18 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppGroup,
   AppInfo,
+  AudioState,
   BackdropInfo,
+  BatteryState,
   CssRect,
   DockLayout,
+  MediaCommand,
+  MediaState,
   MonitorInfo,
+  RadiosState,
   Settings,
   SettingsPatch,
+  TogglesSnapshot,
   WindowAction,
   WindowOrigin,
 } from "./types";
@@ -37,6 +43,19 @@ export const api = {
   appsWindowAction: (hwnd: number, action: WindowAction) =>
     invoke<void>("apps_window_action", { hwnd, action }),
   appsCloseAll: (id: string) => invoke<void>("apps_close_all", { id }),
+  mediaState: () => invoke<MediaState>("media_state"),
+  /** Album art image bytes; empty when there is none. */
+  mediaArt: () => invoke<ArrayBuffer>("media_art"),
+  mediaCommand: (command: MediaCommand) => invoke<void>("media_command", { command }),
+  batteryState: () => invoke<BatteryState>("battery_state"),
+  togglesSnapshot: () => invoke<TogglesSnapshot>("toggles_snapshot"),
+  radioSet: (radio: "wifi" | "bluetooth", on: boolean) => invoke<void>("radio_set", { radio, on }),
+  audioSetVolume: (percent: number) => invoke<void>("audio_set_volume", { percent }),
+  audioSetMuted: (muted: boolean) => invoke<void>("audio_set_muted", { muted }),
+  audioSetDevice: (id: string) => invoke<void>("audio_set_device", { id }),
+  brightnessSet: (percent: number) => invoke<void>("brightness_set", { percent }),
+  /** Switches Windows' light/dark mode; resolves to the mode now in effect. */
+  darkModeSet: (dark: boolean) => invoke<boolean>("dark_mode_set", { dark }),
   appInfo: () => invoke<AppInfo>("app_info"),
   openSettings: () => invoke<void>("open_settings"),
   restoreTaskbar: () => invoke<void>("restore_taskbar"),
@@ -55,6 +74,14 @@ export const events = {
     listen<WindowOrigin>("dock://origin", (e) => cb(e.payload)),
   appsChanged: (cb: (groups: AppGroup[]) => void): Promise<UnlistenFn> =>
     listen<AppGroup[]>("apps://changed", (e) => cb(e.payload)),
+  mediaChanged: (cb: (state: MediaState) => void): Promise<UnlistenFn> =>
+    listen<MediaState>("media://changed", (e) => cb(e.payload)),
+  batteryChanged: (cb: (state: BatteryState) => void): Promise<UnlistenFn> =>
+    listen<BatteryState>("battery://changed", (e) => cb(e.payload)),
+  radiosChanged: (cb: (state: RadiosState) => void): Promise<UnlistenFn> =>
+    listen<RadiosState>("radios://changed", (e) => cb(e.payload)),
+  audioChanged: (cb: (state: AudioState) => void): Promise<UnlistenFn> =>
+    listen<AudioState>("audio://changed", (e) => cb(e.payload)),
   backdrop: (cb: (info: BackdropInfo) => void): Promise<UnlistenFn> =>
     listen<BackdropInfo>("glass://backdrop", (e) => cb(e.payload)),
   appInfo: (cb: (info: AppInfo) => void): Promise<UnlistenFn> =>
