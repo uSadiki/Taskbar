@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
+  AppGroup,
   AppInfo,
   BackdropInfo,
   CssRect,
@@ -8,6 +9,7 @@ import type {
   MonitorInfo,
   Settings,
   SettingsPatch,
+  WindowAction,
   WindowOrigin,
 } from "./types";
 
@@ -27,6 +29,14 @@ export const api = {
   glassBackdrop: () => invoke<ArrayBuffer>("glass_backdrop"),
   openGlassLab: () => invoke<void>("open_glass_lab"),
   listMonitors: () => invoke<MonitorInfo[]>("list_monitors"),
+  appsList: () => invoke<AppGroup[]>("apps_list"),
+  /** PNG bytes; empty when the app has no icon. */
+  appsIcon: (id: string) => invoke<ArrayBuffer>("apps_icon", { id }),
+  appsActivate: (id: string) => invoke<void>("apps_activate", { id }),
+  appsLaunch: (id: string) => invoke<void>("apps_launch", { id }),
+  appsWindowAction: (hwnd: number, action: WindowAction) =>
+    invoke<void>("apps_window_action", { hwnd, action }),
+  appsCloseAll: (id: string) => invoke<void>("apps_close_all", { id }),
   appInfo: () => invoke<AppInfo>("app_info"),
   openSettings: () => invoke<void>("open_settings"),
   restoreTaskbar: () => invoke<void>("restore_taskbar"),
@@ -43,6 +53,8 @@ export const events = {
   dockBlur: (cb: () => void): Promise<UnlistenFn> => listen("dock://blur", () => cb()),
   dockOrigin: (cb: (origin: WindowOrigin) => void): Promise<UnlistenFn> =>
     listen<WindowOrigin>("dock://origin", (e) => cb(e.payload)),
+  appsChanged: (cb: (groups: AppGroup[]) => void): Promise<UnlistenFn> =>
+    listen<AppGroup[]>("apps://changed", (e) => cb(e.payload)),
   backdrop: (cb: (info: BackdropInfo) => void): Promise<UnlistenFn> =>
     listen<BackdropInfo>("glass://backdrop", (e) => cb(e.payload)),
   appInfo: (cb: (info: AppInfo) => void): Promise<UnlistenFn> =>

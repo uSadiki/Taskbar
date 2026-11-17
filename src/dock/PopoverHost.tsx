@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { AnimatePresence, motion } from "motion/react";
 import type { GlassShape } from "../glass/renderer";
 import { scene } from "../glass/scene";
@@ -6,14 +14,31 @@ import { api, events, report } from "../ipc/api";
 import type { DockLayout } from "../ipc/types";
 import { useTone, type Appearance } from "../themes/useAppearance";
 import { usePopover, type Anchor } from "./popover";
+import { AppMenuPopover } from "./popovers/AppMenuPopover";
 import { CalendarPopover } from "./popovers/CalendarPopover";
 import { MenuPopover } from "./popovers/MenuPopover";
 
-/** Every popover the dock can open, by id, with its width in CSS pixels. */
-const POPOVERS: Record<string, { width: number; Content: ComponentType }> = {
-  menu: { width: 208, Content: MenuPopover },
-  clock: { width: 304, Content: CalendarPopover },
+interface PopoverEntry {
+  /** Width in CSS pixels; the height follows the content. */
+  width: number;
+  render: () => ReactNode;
+}
+
+/** The popovers with a fixed id. */
+const POPOVERS: Record<string, PopoverEntry> = {
+  menu: { width: 208, render: () => <MenuPopover /> },
+  clock: { width: 304, render: () => <CalendarPopover /> },
 };
+
+/** Find the popover for an id. Ids of the form `app:<id>` are per-app menus. */
+function resolve(id: string | null): PopoverEntry | undefined {
+  if (!id) return undefined;
+  if (id.startsWith("app:")) {
+    const appId = id.slice(4);
+    return { width: 264, render: () => <AppMenuPopover appId={appId} /> };
+  }
+  return POPOVERS[id];
+}
 
 const GAP = 10; // between the dock and the popover
 const RADIUS = 22;
@@ -45,7 +70,7 @@ export function PopoverHost({ layout, appearance, hostRef }: PopoverHostProps) {
   const id = usePopover((s) => s.id);
   const anchor = usePopover((s) => s.anchor);
   const close = usePopover((s) => s.close);
-  const entry = id ? POPOVERS[id] : undefined;
+  const entry = useMemo(() => resolve(id), [id]);
   const open = !!entry && !!anchor;
 
   const [shape, setShape] = useState<GlassShape | null>(null);
@@ -119,7 +144,6 @@ export function PopoverHost({ layout, appearance, hostRef }: PopoverHostProps) {
   }, [open, close]);
 
   const tone = useTone(shape, layout, appearance);
-  const Content = entry?.Content;
 
   return (
     <div
@@ -130,7 +154,7 @@ export function PopoverHost({ layout, appearance, hostRef }: PopoverHostProps) {
       onContextMenu={(e) => e.preventDefault()}
     >
       <AnimatePresence mode="wait">
-        {open && Content && (
+        {open && entry && (
           <motion.div
             key={id}
             style={{ transformOrigin: layout.edge === "bottom" ? "50% 100%" : "50% 0%" }}
@@ -142,7 +166,7 @@ export function PopoverHost({ layout, appearance, hostRef }: PopoverHostProps) {
             }}
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.09 } }}
           >
-            <Content />
+            {entry.render()}
           </motion.div>
         )}
       </AnimatePresence>

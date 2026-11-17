@@ -64,6 +64,12 @@ pub fn run(safe: bool) {
             commands::glass_info,
             commands::glass_backdrop,
             commands::list_monitors,
+            commands::apps_list,
+            commands::apps_icon,
+            commands::apps_activate,
+            commands::apps_launch,
+            commands::apps_window_action,
+            commands::apps_close_all,
             commands::app_info,
             commands::open_settings,
             commands::open_glass_lab,
@@ -135,6 +141,7 @@ fn setup(app: &AppHandle, safe: bool) -> AppResult<()> {
     dock::reposition();
     dock::show();
     crate::glass::start_watching(app);
+    crate::widgets::apps::start(app);
     hooks::install();
     tray::create(app)?;
     log::info!(

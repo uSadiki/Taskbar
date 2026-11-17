@@ -1381,6 +1381,7 @@ dependencies = [
  "log",
  "notify",
  "parking_lot",
+ "png",
  "serde",
  "serde_json",
  "tauri",

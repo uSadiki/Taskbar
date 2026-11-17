@@ -11,8 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use windows::Win32::Foundation::{HWND, LPARAM};
 use windows::Win32::UI::Shell::{ABM_GETSTATE, ABM_SETSTATE, APPBARDATA, SHAppBarMessage};
 use windows::Win32::UI::WindowsAndMessaging::{
-    FindWindowExW, FindWindowW, GetWindowThreadProcessId, IsWindowVisible, SW_HIDE,
-    SW_SHOWNOACTIVATE, ShowWindow,
+    FindWindowExW, FindWindowW, IsWindowVisible, SW_HIDE, SW_SHOWNOACTIVATE, ShowWindow,
 };
 use windows::core::{PCWSTR, w};
 
@@ -61,14 +60,6 @@ pub fn tray_windows() -> Vec<HWND> {
 pub fn is_tray_window(hwnd: HWND) -> bool {
     let class = class_name(hwnd);
     class == PRIMARY_CLASS || class == SECONDARY_CLASS
-}
-
-/// Explorer's process id, used to scope the re-hide hook to Explorer's windows.
-pub fn explorer_pid() -> Option<u32> {
-    let tray = primary_tray()?;
-    let mut pid = 0u32;
-    unsafe { GetWindowThreadProcessId(tray, Some(&mut pid)) };
-    (pid != 0).then_some(pid)
 }
 
 fn appbar_data() -> APPBARDATA {

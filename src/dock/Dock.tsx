@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -20,6 +21,7 @@ import { PopoverHost } from "./PopoverHost";
 import { useDockDrag } from "./useDockDrag";
 import { useHitRegions } from "./useHitRegions";
 import { WIDGETS } from "./widgets";
+import { AppsWidget } from "./widgets/AppsWidget";
 
 const PILL_RADIUS = 20;
 /** How far the full-width bar's glass extends past the screen edges, so it has no rim there. */
@@ -124,6 +126,14 @@ export function Dock() {
           }}
         >
           {enabled.map(({ id }) => {
+            if (id === "apps") {
+              return (
+                <Fragment key={id}>
+                  <AppsWidget size={tileSize - 8} edge={layout.edge} />
+                  <span className="dock-divider" aria-hidden />
+                </Fragment>
+              );
+            }
             const { label, Icon, phase } = WIDGETS[id];
             return (
               <button

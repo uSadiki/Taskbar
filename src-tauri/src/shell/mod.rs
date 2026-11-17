@@ -13,6 +13,7 @@ pub mod taskbar;
 pub mod tray;
 pub mod watchdog;
 pub mod win;
+pub mod worker;
 
 use std::sync::OnceLock;
 use std::time::Duration;

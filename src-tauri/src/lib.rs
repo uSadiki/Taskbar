@@ -10,6 +10,7 @@ mod glass;
 mod paths;
 mod settings;
 mod shell;
+mod widgets;
 
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();

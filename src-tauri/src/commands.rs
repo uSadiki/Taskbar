@@ -14,6 +14,7 @@ use crate::glass::{self, BackdropInfo};
 use crate::settings::{Settings, SettingsStore};
 use crate::shell::dock::{self, AppInfo, DockLayout};
 use crate::shell::monitors::{self, MonitorInfo};
+use crate::widgets::apps::{self, WindowAction, model::AppGroup};
 
 #[tauri::command]
 pub fn get_settings(store: State<'_, SettingsStore>) -> Settings {
@@ -97,6 +98,41 @@ pub fn glass_info() -> BackdropInfo {
 #[tauri::command]
 pub async fn glass_backdrop() -> tauri::ipc::Response {
     tauri::ipc::Response::new(glass::packed())
+}
+
+// ---- Apps widget ----------------------------------------------------------
+
+#[tauri::command]
+pub fn apps_list() -> Vec<AppGroup> {
+    apps::groups()
+}
+
+/// PNG icon for an app, as raw bytes. Empty when the app has no icon.
+#[tauri::command]
+pub async fn apps_icon(id: String) -> tauri::ipc::Response {
+    tauri::ipc::Response::new(apps::icon(id).unwrap_or_default())
+}
+
+/// Left click: launch, focus, minimize or step to the next window.
+#[tauri::command]
+pub fn apps_activate(id: String) {
+    apps::activate(id);
+}
+
+/// Middle click: start a new instance.
+#[tauri::command]
+pub fn apps_launch(id: String) {
+    apps::launch(id);
+}
+
+#[tauri::command]
+pub fn apps_window_action(hwnd: isize, action: WindowAction) {
+    apps::window_action(hwnd, action);
+}
+
+#[tauri::command]
+pub fn apps_close_all(id: String) {
+    apps::close_all(id);
 }
 
 #[tauri::command]

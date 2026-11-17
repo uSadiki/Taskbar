@@ -5,50 +5,51 @@ use parking_lot::Mutex;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::WindowsAndMessaging::{
-    EVENT_OBJECT_SHOW, EVENT_SYSTEM_FOREGROUND, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
+    EVENT_OBJECT_CLOAKED, EVENT_OBJECT_CREATE, EVENT_OBJECT_HIDE, EVENT_OBJECT_NAMECHANGE,
+    EVENT_OBJECT_SHOW, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND,
+    EVENT_SYSTEM_MINIMIZESTART, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT,
 };
 
 use super::{dock, guard, taskbar};
+use crate::widgets::apps;
 
 static HOOKS: Mutex<Vec<isize>> = Mutex::new(Vec::new());
 
-/// (Re)install the hooks. Safe to call again, for example after Explorer
-/// restarts and its process id changes.
+/// The event ranges the dock listens to. Kept narrow on purpose: the range
+/// between HIDE and NAMECHANGE holds LOCATIONCHANGE, which fires on every
+/// mouse move.
+const RANGES: &[(u32, u32)] = &[
+    // Foreground changes: fullscreen detection and the active-app highlight.
+    (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND),
+    (EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND),
+    // Windows appearing and disappearing (create, destroy, show, hide).
+    (EVENT_OBJECT_CREATE, EVENT_OBJECT_HIDE),
+    // Title changes.
+    (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE),
+    // Store apps and virtual desktops hide windows by cloaking them.
+    (EVENT_OBJECT_CLOAKED, EVENT_OBJECT_UNCLOAKED),
+];
+
+/// (Re)install the hooks. Safe to call again.
 pub fn install() {
     uninstall();
-    let mut hooks = Vec::new();
-    unsafe {
-        // Foreground changes, system wide: drives fullscreen detection.
-        let foreground = SetWinEventHook(
-            EVENT_SYSTEM_FOREGROUND,
-            EVENT_SYSTEM_FOREGROUND,
-            None,
-            Some(callback),
-            0,
-            0,
-            WINEVENT_OUTOFCONTEXT,
-        );
-        if !foreground.is_invalid() {
-            hooks.push(foreground.0 as isize);
-        }
-
-        // Windows shown by Explorer only: catches the taskbar reappearing
-        // while "hide completely" is on.
-        if let Some(pid) = taskbar::explorer_pid() {
-            let shown = SetWinEventHook(
-                EVENT_OBJECT_SHOW,
-                EVENT_OBJECT_SHOW,
-                None,
-                Some(callback),
-                pid,
-                0,
-                WINEVENT_OUTOFCONTEXT,
-            );
-            if !shown.is_invalid() {
-                hooks.push(shown.0 as isize);
-            }
-        }
-    }
+    let hooks = RANGES
+        .iter()
+        .filter_map(|&(first, last)| {
+            let hook = unsafe {
+                SetWinEventHook(
+                    first,
+                    last,
+                    None,
+                    Some(callback),
+                    0,
+                    0,
+                    WINEVENT_OUTOFCONTEXT,
+                )
+            };
+            (!hook.is_invalid()).then_some(hook.0 as isize)
+        })
+        .collect();
     *HOOKS.lock() = hooks;
 }
 
@@ -66,13 +67,23 @@ unsafe extern "system" fn callback(
     event: u32,
     hwnd: HWND,
     id_object: i32,
-    _id_child: i32,
+    id_child: i32,
     _thread: u32,
     _time: u32,
 ) {
+    // Only events about a window itself, not about something inside it.
+    if id_object != OBJID_WINDOW.0 || id_child != 0 {
+        return;
+    }
     guard::run("a WinEvent callback", || match event {
-        EVENT_SYSTEM_FOREGROUND => dock::on_foreground_changed(hwnd),
-        EVENT_OBJECT_SHOW if id_object == OBJID_WINDOW.0 => taskbar::on_window_shown(hwnd),
-        _ => {}
+        EVENT_SYSTEM_FOREGROUND => {
+            dock::on_foreground_changed(hwnd);
+            apps::on_window_event(hwnd, false);
+        }
+        EVENT_OBJECT_SHOW => {
+            taskbar::on_window_shown(hwnd);
+            apps::on_window_event(hwnd, true);
+        }
+        _ => apps::on_window_event(hwnd, true),
     });
 }

@@ -116,6 +116,24 @@ export interface AppInfo {
   settingsPath: string;
 }
 
+export interface AppWindow {
+  hwnd: number;
+  title: string;
+  minimized: boolean;
+  active: boolean;
+}
+
+/** One icon in the Apps widget: a pinned app, a running app, or both. */
+export interface AppGroup {
+  id: string;
+  name: string;
+  pinned: boolean;
+  active: boolean;
+  windows: AppWindow[];
+}
+
+export type WindowAction = "focus" | "minimize" | "close";
+
 /** A rectangle in CSS pixels relative to the window. */
 export interface CssRect {
   x: number;
