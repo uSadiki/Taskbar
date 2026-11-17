@@ -12,7 +12,7 @@ The plan is in [PLAN.md](PLAN.md). This file records what is done, what was deci
 | 3. Apps widget | Done 2026-11-17 |
 | 4. Now Playing, Battery Ring, Quick Toggles | Done 2026-11-17 |
 | 5. Weather, GitHub Activity, Claude Usage | Done 2026-11-17 |
-| 6. Polish and release | Not started |
+| 6. Polish and release | Done 2026-11-17; installed on this PC |
 
 ## How to run
 
@@ -202,6 +202,43 @@ How I verify without touching your mouse or keyboard: `scripts/cdp.mjs` drives t
 - GitHub with a real token: the parsing is tested, the live request isn't.
 - The bridge registering itself: only the installed (release) app does that, see Phase 6.
 - A real 80% alert from real limits.
+## Phase 6: polish and release
+
+### Done
+
+- Start at login (Settings > General), through the autostart plugin: a `Glassdock` value under `HKCU\...\Run`. Development builds don't register.
+- NSIS installer, per user, no admin rights: `src-tauri\target\release\bundle\nsis\Glassdock_0.1.0_x64-setup.exe`. Before replacing files it asks a running dock to quit; it adds a "Glassdock - Restore taskbar" Start menu entry; the uninstaller restores the taskbar and removes Glassdock's Claude Code status line entry and the start-at-login value (`--uninstall-cleanup`).
+- Strict content security policy (self, inline styles, blob/data images, IPC only).
+- Mica backdrop for the Settings and glass lab windows.
+- Quiet hours schedule and alert switches (Settings > Notifications).
+- README.md with install and usage instructions.
+
+### Verified on this PC, with the installed release build
+
+- Install and upgrade over a running copy (silent), both Start menu entries created.
+- The strict security policy: dock, app icons (9 of 9 loaded), glass canvas and all IPC work.
+- The Claude bridge registered itself in `~/.claude/settings.json`, keeping every other key in order, and real limits came through from this Claude Code session (47% of the 5-hour window).
+- Start at login on and off: the Run value appeared and disappeared.
+- Hard kill of the dock process (End task): the watchdog restored the taskbar within 3 seconds. This was the last restore path not yet verified.
+- Uninstall: taskbar restored, Claude Code's settings file byte-identical to the backup taken before installing, Run value, shortcuts and uninstall entry gone. Logs and caches stay in `%LOCALAPPDATA%\Glassdock`.
+
+### Performance
+
+The first release measurement found 44% of one core in use at idle: the scrolling song title in the dock bar made WebView2 recomposite the whole 2560x1062 transparent window every frame. Fixed by allowing no endless animation in the dock bar (the title scrolls on hover, the weather icon in the tile is still, the charging pulse is only in the popover), by telling WebView2 to stop rendering while the dock is hidden for a fullscreen app, and by reading Claude Code's logs incrementally instead of re-reading a 20 MB file on every change.
+
+| Measured (release build, dock hidden for a fullscreen video) | Value | Target |
+|---|---|---|
+| CPU, whole process tree, before the fixes | 44% of one core | under 1% |
+| CPU, after the fixes | 0.9% of one core (0.7% was the log re-read, since fixed) | under 1% |
+| Memory, private working set, whole tree | 254 MB, of which the WebView2 GPU process 166 MB | under 150 MB |
+
+Not measured: idle with the dock visible on the final build, because a fullscreen video was in front for the whole test session.
+
+### Known gaps
+
+- Memory is above the 150 MB target. The largest part is the WebView2 GPU process, and the dock window is a 2560x1062 transparent surface at all times. The next step would be to keep the window at strip height until a popover or toast opens.
+- GitHub with a real token, a real 80% alert, Spotify, and switching radios, audio device or light/dark mode to a different state were not exercised (see the phase sections).
+- Weather has no city set; choose one in Settings > Widgets.
 ## Decisions
 
 | Date | Decision |
